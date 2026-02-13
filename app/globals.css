@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
+@layer base {
+  :root {
+    /* Daure Express Theme - Dark Mode Default */
+    --background: 220 20% 10%;
+    --foreground: 210 40% 98%;
+
+    --card: 220 20% 13%;
+    --card-foreground: 210 40% 98%;
+ 
+    --popover: 220 20% 13%;
+    --popover-foreground: 210 40% 98%;
+ 
+    /* Primary - Orange */
+    --primary: 25 95% 53%;
+    --primary-foreground: 0 0% 100%;
+ 
+    /* Secondary - Blue */
+    --secondary: 205 100% 50%;
+    --secondary-foreground: 0 0% 100%;
+ 
+    --muted: 220 15% 20%;
+    --muted-foreground: 215 20% 65%;
+ 
+    --accent: 205 100% 50%;
+    --accent-foreground: 0 0% 100%;
+ 
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 15% 25%;
+    --input: 220 15% 20%;
+    --ring: 25 95% 53%;
+ 
+    --radius: 0.5rem;
+
+    /* Custom brand colors */
+    --brand-orange: 25 95% 53%;
+    --brand-blue: 205 100% 50%;
+    --brand-dark: 220 20% 10%;
+  }
+ 
+  .dark {
+    --background: 220 20% 7%;
+    --foreground: 210 40% 98%;
+ 
+    --card: 220 20% 10%;
+    --card-foreground: 210 40% 98%;
+ 
+    --popover: 220 20% 10%;
+    --popover-foreground: 210 40% 98%;
+ 
+    --primary: 25 95% 53%;
+    --primary-foreground: 0 0% 100%;
+ 
+    --secondary: 205 100% 50%;
+    --secondary-foreground: 0 0% 100%;
+ 
+    --muted: 220 15% 18%;
+    --muted-foreground: 215 20% 65%;
+ 
+    --accent: 205 100% 50%;
+    --accent-foreground: 0 0% 100%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --border: 220 15% 22%;
+    --input: 220 15% 18%;
+    --ring: 25 95% 53%;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
