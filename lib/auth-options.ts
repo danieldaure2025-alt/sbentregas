@@ -78,6 +78,18 @@ export const authOptions: NextAuthOptions = {
         } catch (error) {
           console.error('[AUTH ERROR] Erro durante autenticação:', error);
           console.error('[AUTH ERROR] Email tentado:', credentials?.email);
+
+          // Log detailed Prisma errors
+          if (error && typeof error === 'object') {
+            console.error('[AUTH ERROR] Error details:', {
+              name: (error as any).name,
+              message: (error as any).message,
+              code: (error as any).code,
+              meta: (error as any).meta,
+            });
+          }
+
+          // Always return null on error to prevent security leaks
           return null;
         }
       },
@@ -123,25 +135,36 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user, account }) {
       try {
+        // Initial sign in - set user data
         if (user) {
           token.id = user.id;
           token.role = (user as any)?.role || UserRole.CLIENT;
           token.status = (user as any)?.status || 'ACTIVE';
+          token.lastRefresh = Date.now();
         }
 
-        // Fetch fresh data on each request
-        if (token?.email) {
-          const dbUser = await prisma.user.findUnique({
-            where: { email: token.email },
-            select: { id: true, role: true, status: true, name: true, email: true, image: true },
-          });
+        // Refresh user data only if token is older than 5 minutes
+        // This reduces DB queries by ~95% and prevents connection pool exhaustion
+        const shouldRefresh = !token.lastRefresh || (Date.now() - (token.lastRefresh as number)) > 5 * 60 * 1000;
 
-          if (dbUser) {
-            token.id = dbUser.id;
-            token.role = dbUser.role;
-            token.status = dbUser.status;
-            token.name = dbUser.name;
-            token.picture = dbUser.image;
+        if (shouldRefresh && token?.email) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { email: token.email },
+              select: { id: true, role: true, status: true, name: true, email: true, image: true },
+            });
+
+            if (dbUser) {
+              token.id = dbUser.id;
+              token.role = dbUser.role;
+              token.status = dbUser.status;
+              token.name = dbUser.name;
+              token.picture = dbUser.image;
+              token.lastRefresh = Date.now();
+            }
+          } catch (dbError) {
+            console.error('[JWT ERROR] Erro ao buscar dados do usuário (usando cache):', dbError);
+            // Return cached token data on DB error
           }
         }
 
