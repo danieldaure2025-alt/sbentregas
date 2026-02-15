@@ -1,6 +1,6 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import GoogleProvider from 'next-auth/providers/google';
+// import GoogleProvider from 'next-auth/providers/google'; // Disabled - configure credentials to enable
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import { prisma } from './db';
 import bcrypt from 'bcryptjs';
@@ -16,11 +16,12 @@ export const authOptions: NextAuthOptions = {
     error: '/auth/error',
   },
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || 'placeholder-google-client-id',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'placeholder-google-client-secret',
-      allowDangerousEmailAccountLinking: true,
-    }),
+    // Google OAuth temporarily disabled - configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable
+    // GoogleProvider({
+    //   clientId: process.env.GOOGLE_CLIENT_ID || '',
+    //   clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    //   allowDangerousEmailAccountLinking: true,
+    // }),
     CredentialsProvider({
       name: 'Credentials',
       credentials: {
