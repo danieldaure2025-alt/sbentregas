@@ -13,6 +13,8 @@ export async function POST(req: NextRequest) {
     const {
       email, password, name, role, phone, documentNumber, vehicleType, licenseNumber,
       pixKeyType, pixKey, bankCode, bankName, agencyNumber, accountNumber, accountType, accountHolder, cpfCnpj,
+      // Client fields
+      clientType, clientAddress, clientLatitude, clientLongitude,
       // Establishment fields
       establishmentName, establishmentAddress, establishmentPhone, establishmentCnpj
     } = body;
@@ -71,8 +73,9 @@ export async function POST(req: NextRequest) {
 
     // Determine user role and status
     const userRole = (role as UserRole) || UserRole.CLIENT;
+    // Clientes, entregadores e estabelecimentos precisam de aprovação
     const userStatus =
-      userRole === UserRole.DELIVERY_PERSON || userRole === UserRole.ESTABLISHMENT
+      userRole === UserRole.DELIVERY_PERSON || userRole === UserRole.ESTABLISHMENT || userRole === UserRole.CLIENT
         ? UserStatus.PENDING_APPROVAL
         : UserStatus.ACTIVE;
 
@@ -102,6 +105,11 @@ export async function POST(req: NextRequest) {
         accountType: userRole === UserRole.DELIVERY_PERSON && accountType ? accountType : null,
         accountHolder: userRole === UserRole.DELIVERY_PERSON && accountHolder ? accountHolder : null,
         cpfCnpj: userRole === UserRole.DELIVERY_PERSON && cpfCnpj ? cpfCnpj : null,
+        // Client fields
+        clientType: userRole === UserRole.CLIENT && clientType ? clientType : null,
+        clientAddress: userRole === UserRole.CLIENT && clientAddress ? clientAddress : null,
+        clientLatitude: userRole === UserRole.CLIENT && clientLatitude ? parseFloat(clientLatitude) : null,
+        clientLongitude: userRole === UserRole.CLIENT && clientLongitude ? parseFloat(clientLongitude) : null,
         // Establishment fields
         establishmentName: userRole === UserRole.ESTABLISHMENT ? (establishmentName || name) : null,
         establishmentAddress: userRole === UserRole.ESTABLISHMENT ? establishmentAddress : null,

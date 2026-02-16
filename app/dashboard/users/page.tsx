@@ -7,9 +7,9 @@ import { Loading } from '@/components/shared/loading';
 import { EmptyState } from '@/components/shared/empty-state';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Users, Filter, CheckCircle, XCircle, Loader2, Star, Clock, 
-  FileText, QrCode, Building2, MapPin, Phone, Mail, Truck, ChevronDown, ChevronUp
+import {
+  Users, Filter, CheckCircle, XCircle, Loader2, Star, Clock,
+  FileText, QrCode, Building2, MapPin, Phone, Mail, Truck, ChevronDown, ChevronUp, Trash2
 } from 'lucide-react';
 import { USER_ROLE_LABELS } from '@/lib/constants';
 
@@ -61,6 +61,9 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const { toast } = useToast();
 
   // Formatar CPF/CNPJ para exibição
@@ -146,8 +149,8 @@ export default function UsersPage() {
 
       toast({
         title: 'Sucesso!',
-        description: !currentValue 
-          ? 'Cobrança no final do dia ativada' 
+        description: !currentValue
+          ? 'Cobrança no final do dia ativada'
           : 'Cobrança no final do dia desativada',
       });
 
@@ -156,6 +159,73 @@ export default function UsersPage() {
       toast({
         title: 'Erro',
         description: error?.message || 'Erro ao atualizar configuração',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    setDeletingUserId(userToDelete.id);
+    try {
+      const res = await fetch(`/api/users/${userToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao excluir usuário');
+      }
+
+      toast({
+        title: 'Sucesso!',
+        description: 'Usuário excluído permanentemente',
+      });
+
+      setShowDeleteConfirm(false);
+      setUserToDelete(null);
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error?.message || 'Erro ao excluir usuário',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
+  const handleRejectUser = async (userId: string) => {
+    setUpdatingUserId(userId);
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'BLOCKED' }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao rejeitar usuário');
+      }
+
+      toast({
+        title: 'Usuário Rejeitado',
+        description: 'A aprovação foi negada e o usuário foi bloqueado',
+        variant: 'default',
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error?.message || 'Erro ao rejeitar usuário',
         variant: 'destructive',
       });
     } finally {
@@ -408,6 +478,51 @@ export default function UsersPage() {
                             {user.role === 'CLIENT' && (
                               <div className="space-y-3">
                                 <h4 className="font-semibold text-sm text-orange-500">Dados do Cliente</h4>
+
+                                {/* Phone number destacado se pendente */}
+                                {user.phone && user.status === 'PENDING_APPROVAL' && (
+                                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <Phone className="w-4 h-4 text-yellow-500" />
+                                      <span className="font-semibold text-sm text-yellow-500">Telefone para Contato</span>
+                                    </div>
+                                    <p className="font-mono text-lg text-white">{user.phone}</p>
+                                    <p className="text-xs text-yellow-400 mt-1">
+                                      ⚠️ Entre em contato para verificar identidade antes de aprovar
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Phone number normal se JÁ aprovado */}
+                                {user.phone && user.status !== 'PENDING_APPROVAL' && (
+                                  <div>
+                                    <span className="text-muted-foreground">Telefone:</span>{' '}
+                                    <span className="font-medium">{user.phone}</span>
+                                  </div>
+                                )}
+
+                                {/* Client Type */}
+                                {user.clientType && (
+                                  <div>
+                                    <span className="text-muted-foreground">Tipo:</span>{' '}
+                                    <span className="font-medium">
+                                      {user.clientType === 'DELIVERY' ? '📦 Cliente Delivery' : '👤 Cliente Padrão'}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {/* Client Address (for delivery clients) */}
+                                {user.clientAddress && user.clientType === 'DELIVERY' && (
+                                  <div>
+                                    <span className="text-muted-foreground">Endereço de Coleta:</span>{' '}
+                                    <div className="flex items-start gap-2 mt-1">
+                                      <MapPin className="w-3 h-3 mt-1 text-orange-500" />
+                                      <span className="font-medium text-sm">{user.clientAddress}</span>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* End of Day Billing */}
                                 <div className="flex items-center gap-2">
                                   <Clock className={`w-4 h-4 ${user.endOfDayBilling ? 'text-green-500' : 'text-gray-400'}`} />
                                   <span className={`text-sm ${user.endOfDayBilling ? 'text-green-500' : 'text-muted-foreground'}`}>
@@ -429,21 +544,39 @@ export default function UsersPage() {
                       {/* Ações */}
                       <div className="ml-6 space-y-2">
                         {user.status === 'PENDING_APPROVAL' && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleUpdateUserStatus(user.id, 'ACTIVE')}
-                            disabled={updatingUserId !== null}
-                            className="w-full"
-                          >
-                            {updatingUserId === user.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <>
-                                <CheckCircle className="w-4 h-4" />
-                                Aprovar
-                              </>
-                            )}
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleUpdateUserStatus(user.id, 'ACTIVE')}
+                              disabled={updatingUserId !== null}
+                              className="w-full bg-green-600 hover:bg-green-700"
+                            >
+                              {updatingUserId === user.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Aprovar
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRejectUser(user.id)}
+                              disabled={updatingUserId !== null}
+                              className="w-full"
+                            >
+                              {updatingUserId === user.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <XCircle className="w-4 h-4 mr-2" />
+                                  Rejeitar
+                                </>
+                              )}
+                            </Button>
+                          </>
                         )}
 
                         {user.status === 'ACTIVE' && (
@@ -458,7 +591,7 @@ export default function UsersPage() {
                               <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
                               <>
-                                <XCircle className="w-4 h-4" />
+                                <XCircle className="w-4 h-4 mr-2" />
                                 Bloquear
                               </>
                             )}
@@ -477,12 +610,33 @@ export default function UsersPage() {
                               <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
                               <>
-                                <CheckCircle className="w-4 h-4" />
+                                <CheckCircle className="w-4 h-4 mr-2" />
                                 Reativar
                               </>
                             )}
                           </Button>
                         )}
+
+                        {/* Botão Excluir - disponível para todos os status */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setUserToDelete(user);
+                            setShowDeleteConfirm(true);
+                          }}
+                          disabled={deletingUserId !== null}
+                          className="w-full border-red-500/50 text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                        >
+                          {deletingUserId === user.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Excluir
+                            </>
+                          )}
+                        </Button>
 
                         {user.role === 'CLIENT' && user.status === 'ACTIVE' && (
                           <Button
@@ -496,7 +650,7 @@ export default function UsersPage() {
                               <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
                               <>
-                                <Clock className="w-4 h-4" />
+                                <Clock className="w-4 h-4 mr-2" />
                                 {user.endOfDayBilling ? 'Desativar EOD' : 'Ativar EOD'}
                               </>
                             )}
@@ -511,6 +665,64 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog de Confirmação de Exclusão */}
+      {showDeleteConfirm && userToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-md w-full bg-card border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive flex items-center gap-2">
+                <XCircle className="w-5 h-5" />
+                Confirmar Exclusão
+              </CardTitle>
+              <CardDescription>
+                Esta ação não pode ser desfeita
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p>
+                Tem certeza que deseja excluir permanentemente o usuário:
+              </p>
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="font-semibold">{userToDelete.name}</p>
+                <p className="text-sm text-muted-foreground">{userToDelete.email}</p>
+                <p className="text-sm text-muted-foreground">Perfil: {USER_ROLE_LABELS[userToDelete.role as keyof typeof USER_ROLE_LABELS]}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setUserToDelete(null);
+                  }}
+                  disabled={deletingUserId !== null}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteUser}
+                  disabled={deletingUserId !== null}
+                  className="flex-1"
+                >
+                  {deletingUserId ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Excluindo...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Sim, Excluir
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

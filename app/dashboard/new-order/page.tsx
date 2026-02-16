@@ -26,7 +26,7 @@ export default function NewOrderPage() {
   const [originAddresses, setOriginAddresses] = useState<LocationInput[]>([{ id: '1', address: '' }]);
   const [destinationAddresses, setDestinationAddresses] = useState<LocationInput[]>([{ id: '1', address: '' }]);
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CREDIT_CARD');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PIX');
   const [estimate, setEstimate] = useState<any>(null);
   const [order, setOrder] = useState<any>(null);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -48,31 +48,31 @@ export default function NewOrderPage() {
     if (info.originAddress) {
       setOriginAddresses([{ id: '1', address: info.originAddress }]);
     }
-    
+
     // Update destination address if found
     if (info.destinationAddress) {
       setDestinationAddresses([{ id: '1', address: info.destinationAddress }]);
     }
-    
+
     // Build notes from extracted info
     const newNotes: string[] = [];
     if (info.recipientName) newNotes.push(`Destinatário: ${info.recipientName}`);
     if (info.phone) newNotes.push(`Telefone: ${info.phone}`);
     if (info.notes) newNotes.push(info.notes);
-    
+
     if (newNotes.length > 0) {
       setNotes(prev => prev ? `${prev}\n${newNotes.join('\n')}` : newNotes.join('\n'));
     }
-    
+
     // Clear estimate since addresses may have changed
     setEstimate(null);
     // Hide camera after extraction
     setShowCamera(false);
   };
 
-  // Check if user has end of day billing enabled
+  // Check if user has end of day billing enabled AND auto-fill address for delivery clients
   useEffect(() => {
-    const checkEndOfDayBilling = async () => {
+    const checkUserSettings = async () => {
       try {
         const res = await fetch('/api/auth/session');
         if (res.ok) {
@@ -82,14 +82,26 @@ export default function NewOrderPage() {
             if (userRes.ok) {
               const userData = await userRes.json();
               setEndOfDayBillingEnabled(userData.user?.endOfDayBilling ?? false);
+
+              // Auto-preencher endereço de origem para clientes delivery
+              if (userData.user?.clientType === 'DELIVERY' && userData.user?.clientAddress) {
+                setOriginAddresses([{
+                  id: 'delivery-client-address',
+                  address: userData.user.clientAddress
+                }]);
+                toast({
+                  title: '📍 Endereço de Coleta Preenchido',
+                  description: 'Seu endereço cadastrado foi adicionado como ponto de coleta',
+                });
+              }
             }
           }
         }
       } catch (error) {
-        console.error('Error checking end of day billing:', error);
+        console.error('Error checking user settings:', error);
       }
     };
-    checkEndOfDayBilling();
+    checkUserSettings();
   }, []);
 
   const addOriginAddress = () => {
@@ -161,11 +173,11 @@ export default function NewOrderPage() {
       }
 
       const data = await res.json();
-      
+
       // Add extra fee for additional stops (R$3 per extra stop)
       const extraStops = (validOrigins.length - 1) + (validDestinations.length - 1);
       const extraFee = extraStops * 3;
-      
+
       setEstimate({
         ...data,
         extraStops,
@@ -214,7 +226,7 @@ export default function NewOrderPage() {
       }
 
       setOrder(data.order);
-      
+
       if (paymentMethod === 'CASH') {
         setStep('success');
         toast({
@@ -321,7 +333,7 @@ export default function NewOrderPage() {
               <p className="text-sm text-gray-400">
                 Pedido #{order?.id?.slice(-8).toUpperCase()}
               </p>
-              
+
               {paymentMethod === 'PIX' && (
                 <div className="bg-gray-900 p-4 rounded-lg border border-blue-500/30 mt-4">
                   <p className="text-sm text-gray-400 mb-2">Chave PIX para pagamento:</p>
@@ -471,7 +483,7 @@ export default function NewOrderPage() {
                   Adicionar Coleta
                 </Button>
               </div>
-              
+
               {originAddresses.map((origin, index) => (
                 <div key={origin.id} className="flex gap-2">
                   <div className="flex-1 relative">
@@ -521,7 +533,7 @@ export default function NewOrderPage() {
                   Adicionar Entrega
                 </Button>
               </div>
-              
+
               {destinationAddresses.map((dest, index) => (
                 <div key={dest.id} className="flex gap-2">
                   <div className="flex-1 relative">
@@ -641,19 +653,17 @@ export default function NewOrderPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-3">
-                {/* Cartão de Crédito */}
-                <button
+                {/* Cartão de Crédito - TEMPORARIAMENTE DESABILITADO até integração Pagar.me */}
+                {/* <button
                   type="button"
                   onClick={() => setPaymentMethod('CREDIT_CARD')}
-                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${
-                    paymentMethod === 'CREDIT_CARD'
+                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${paymentMethod === 'CREDIT_CARD'
                       ? 'border-orange-500 bg-orange-500/10'
                       : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
-                  }`}
+                    }`}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    paymentMethod === 'CREDIT_CARD' ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-300'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${paymentMethod === 'CREDIT_CARD' ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-300'
+                    }`}>
                     <CreditCard className="w-6 h-6" />
                   </div>
                   <div className="flex-1 text-left">
@@ -663,21 +673,19 @@ export default function NewOrderPage() {
                   {paymentMethod === 'CREDIT_CARD' && (
                     <CheckCircle className="w-6 h-6 text-orange-500" />
                   )}
-                </button>
+                </button> */}
 
                 {/* PIX */}
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('PIX')}
-                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${
-                    paymentMethod === 'PIX'
-                      ? 'border-blue-500 bg-blue-500/10'
-                      : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
-                  }`}
+                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${paymentMethod === 'PIX'
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
+                    }`}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    paymentMethod === 'PIX' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${paymentMethod === 'PIX' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
+                    }`}>
                     <QrCode className="w-6 h-6" />
                   </div>
                   <div className="flex-1 text-left">
@@ -693,15 +701,13 @@ export default function NewOrderPage() {
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('CASH')}
-                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${
-                    paymentMethod === 'CASH'
-                      ? 'border-green-500 bg-green-500/10'
-                      : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
-                  }`}
+                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${paymentMethod === 'CASH'
+                    ? 'border-green-500 bg-green-500/10'
+                    : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
+                    }`}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    paymentMethod === 'CASH' ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-300'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${paymentMethod === 'CASH' ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-300'
+                    }`}>
                     <Banknote className="w-6 h-6" />
                   </div>
                   <div className="flex-1 text-left">
@@ -718,15 +724,13 @@ export default function NewOrderPage() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('END_OF_DAY')}
-                    className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${
-                      paymentMethod === 'END_OF_DAY'
-                        ? 'border-purple-500 bg-purple-500/10'
-                        : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
-                    }`}
+                    className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${paymentMethod === 'END_OF_DAY'
+                      ? 'border-purple-500 bg-purple-500/10'
+                      : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
+                      }`}
                   >
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                      paymentMethod === 'END_OF_DAY' ? 'bg-purple-500 text-white' : 'bg-gray-700 text-gray-300'
-                    }`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${paymentMethod === 'END_OF_DAY' ? 'bg-purple-500 text-white' : 'bg-gray-700 text-gray-300'
+                      }`}>
                       <Calendar className="w-6 h-6" />
                     </div>
                     <div className="flex-1 text-left">
@@ -741,15 +745,14 @@ export default function NewOrderPage() {
               </div>
 
               {/* Info box baseado na seleção */}
-              <div className={`p-4 rounded-lg border ${
-                paymentMethod === 'CREDIT_CARD' 
-                  ? 'bg-orange-500/10 border-orange-500/30'
-                  : paymentMethod === 'PIX'
-                    ? 'bg-blue-500/10 border-blue-500/30'
-                    : paymentMethod === 'END_OF_DAY'
-                      ? 'bg-purple-500/10 border-purple-500/30'
-                      : 'bg-green-500/10 border-green-500/30'
-              }`}>
+              <div className={`p-4 rounded-lg border ${paymentMethod === 'CREDIT_CARD'
+                ? 'bg-orange-500/10 border-orange-500/30'
+                : paymentMethod === 'PIX'
+                  ? 'bg-blue-500/10 border-blue-500/30'
+                  : paymentMethod === 'END_OF_DAY'
+                    ? 'bg-purple-500/10 border-purple-500/30'
+                    : 'bg-green-500/10 border-green-500/30'
+                }`}>
                 {paymentMethod === 'CREDIT_CARD' && (
                   <p className="text-sm text-orange-300">
                     <strong className="text-orange-400">Pagamento Seguro:</strong> Você será redirecionado para a página de pagamento seguro via Stripe.

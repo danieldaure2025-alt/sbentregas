@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Mail, Lock, User, Phone, Truck, FileText, Loader2, QrCode, Building2, CheckSquare, ExternalLink } from 'lucide-react';
+import { Package, Mail, Lock, User, Phone, Truck, FileText, Loader2, QrCode, Building2, CheckSquare, ExternalLink, MapPin } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { isValidDocument, formatDocument as formatDocumentUtil } from '@/lib/document-validator';
@@ -35,6 +35,9 @@ export default function SignupPage() {
     accountType: '',
     accountHolder: '',
     cpfCnpj: '',
+    // Client fields
+    clientType: 'NORMAL',
+    clientAddress: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -280,6 +283,89 @@ export default function SignupPage() {
                 <option value="DELIVERY_PERSON">Entregador</option>
               </select>
             </div>
+
+            {formData.role === 'CLIENT' && (
+              <>
+                <div className="space-y-3">
+                  <Label className="text-gray-300">Tipo de Cliente</Label>
+                  <div className="grid gap-3">
+                    <label
+                      className={`flex items-start gap-4 p-4 rounded-lg border-2 transition-all cursor-pointer ${formData.clientType === 'NORMAL'
+                        ? 'border-orange-500 bg-orange-500/10'
+                        : 'border-gray-700 hover:border-gray-600 bg-gray-800/50'
+                        }`}
+                    >
+                      <input
+                        type="radio"
+                        name="clientType"
+                        value="NORMAL"
+                        checked={formData.clientType === 'NORMAL'}
+                        onChange={handleChange}
+                        disabled={isLoading}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <p className={`font-semibold ${formData.clientType === 'NORMAL' ? 'text-orange-400' : 'text-white'}`}>
+                          Cliente Padrão
+                        </p>
+                        <p className="text-sm text-gray-400">
+                          Informar endereço de coleta a cada pedido
+                        </p>
+                      </div>
+                    </label>
+
+                    <label
+                      className={`flex items-start gap-4 p-4 rounded-lg border-2 transition-all cursor-pointer ${formData.clientType === 'DELIVERY'
+                        ? 'border-orange-500 bg-orange-500/10'
+                        : 'border-gray-700 hover:border-gray-600 bg-gray-800/50'
+                        }`}
+                    >
+                      <input
+                        type="radio"
+                        name="clientType"
+                        value="DELIVERY"
+                        checked={formData.clientType === 'DELIVERY'}
+                        onChange={handleChange}
+                        disabled={isLoading}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <p className={`font-semibold ${formData.clientType === 'DELIVERY' ? 'text-orange-400' : 'text-white'}`}>
+                          Cliente Delivery
+                        </p>
+                        <p className="text-sm text-gray-400">
+                          Usar meu endereço como ponto de coleta fixo
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {formData.clientType === 'DELIVERY' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="clientAddress" className="text-gray-300">
+                      Endereço de Coleta *
+                    </Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                      <Input
+                        id="clientAddress"
+                        name="clientAddress"
+                        placeholder="Rua, número, bairro, cidade"
+                        value={formData.clientAddress}
+                        onChange={handleChange}
+                        required={formData.clientType === 'DELIVERY'}
+                        className={inputClass}
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Este será seu endereço padrão de coleta para todos os pedidos
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
 
             {formData.role === 'DELIVERY_PERSON' && (
               <>
