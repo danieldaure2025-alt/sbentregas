@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Package, Mail, Lock, User, Phone, Truck, FileText, Loader2, QrCode, Building2, CheckSquare, ExternalLink } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { isValidDocument, formatDocument as formatDocumentUtil } from '@/lib/document-validator';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -67,8 +68,9 @@ export default function SignupPage() {
   };
 
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatDocument(e.target.value);
-    if (formatted.replace(/\D/g, '').length <= 14) {
+    const formatted = formatDocumentUtil(e.target.value);
+    const numbersOnly = formatted.replace(/\D/g, '');
+    if (numbersOnly.length <= 14) {
       setFormData((prev) => ({
         ...prev,
         documentNumber: formatted,
@@ -100,12 +102,22 @@ export default function SignupPage() {
       return;
     }
 
-    // Validar documento (CPF mínimo 11 dígitos, CNPJ 14 dígitos)
+    // Validar documento (CPF ou CNPJ)
     const docNumbers = formData.documentNumber.replace(/\D/g, '');
-    if (docNumbers.length < 11) {
+    if (!docNumbers || docNumbers.length < 11) {
       toast({
         title: 'Erro',
         description: 'CPF ou CNPJ é obrigatório',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    if (!isValidDocument(formData.documentNumber)) {
+      toast({
+        title: 'Erro',
+        description: docNumbers.length === 11 ? 'CPF inválido. Verifique os dígitos.' : 'CNPJ inválido. Verifique os dígitos.',
         variant: 'destructive',
       });
       setIsLoading(false);
@@ -305,7 +317,7 @@ export default function SignupPage() {
                 {/* Dados Bancários - Opcional */}
                 <div className="pt-4 border-t border-gray-700">
                   <p className="text-sm text-gray-400 mb-3">Dados para recebimento (opcional - pode cadastrar depois)</p>
-                  
+
                   {/* PIX */}
                   <div className="space-y-2 mb-3">
                     <Label className="text-gray-300 flex items-center gap-2">
@@ -345,8 +357,8 @@ export default function SignupPage() {
                       name="bankCode"
                       value={formData.bankCode}
                       onChange={(e) => {
-                        const banks: Record<string, string> = {'001':'Banco do Brasil','033':'Santander','104':'Caixa','237':'Bradesco','341':'Itaú','260':'Nubank','077':'Inter'};
-                        setFormData(prev => ({...prev, bankCode: e.target.value, bankName: banks[e.target.value] || ''}));
+                        const banks: Record<string, string> = { '001': 'Banco do Brasil', '033': 'Santander', '104': 'Caixa', '237': 'Bradesco', '341': 'Itaú', '260': 'Nubank', '077': 'Inter' };
+                        setFormData(prev => ({ ...prev, bankCode: e.target.value, bankName: banks[e.target.value] || '' }));
                       }}
                       className="w-full h-10 rounded-md border px-3 py-2 text-sm bg-[hsl(220,20%,15%)] border-gray-700 text-white"
                       disabled={isLoading}
@@ -453,9 +465,9 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" 
+            <Button
+              type="submit"
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold"
               disabled={isLoading || !acceptedTerms}
             >
               {isLoading ? (

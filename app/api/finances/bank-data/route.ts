@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { UserRole } from '@prisma/client';
+import { isValidDocument } from '@/lib/document-validator';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,14 @@ export async function PUT(req: NextRequest) {
       accountHolder,
       cpfCnpj,
     } = data;
+
+    // Validar CPF/CNPJ bancário se fornecido
+    if (cpfCnpj && !isValidDocument(cpfCnpj)) {
+      return NextResponse.json(
+        { error: 'CPF/CNPJ inválido' },
+        { status: 400 }
+      );
+    }
 
     await prisma.user.update({
       where: { id: session.user.id },

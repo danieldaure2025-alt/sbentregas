@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { FileText, Lock, Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
+import { isValidDocument, formatDocument as formatDocumentUtil } from '@/lib/document-validator';
 
 export default function ForgotPasswordPage() {
   const [step, setStep] = useState<'document' | 'reset'>('document');
@@ -44,14 +45,27 @@ export default function ForgotPasswordPage() {
   };
 
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatDocument(e.target.value);
-    if (formatted.replace(/\D/g, '').length <= 14) {
+    const formatted = formatDocumentUtil(e.target.value);
+    const numbersOnly = formatted.replace(/\D/g, '');
+    if (numbersOnly.length <= 14) {
       setDocumentNumber(formatted);
     }
   };
 
   const handleFindAccount = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validar documento antes de enviar
+    if (!isValidDocument(documentNumber)) {
+      const docNumbers = documentNumber.replace(/\D/g, '');
+      toast({
+        title: 'Erro',
+        description: docNumbers.length === 11 ? 'CPF inválido. Verifique os dígitos.' : 'CNPJ inválido. Verifique os dígitos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -214,9 +228,9 @@ export default function ForgotPasswordPage() {
                 </p>
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" 
+              <Button
+                type="submit"
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold"
                 disabled={isLoading || documentNumber.replace(/\D/g, '').length < 11}
               >
                 {isLoading ? (
@@ -272,9 +286,9 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold" 
+              <Button
+                type="submit"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold"
                 disabled={isLoading}
               >
                 {isLoading ? (

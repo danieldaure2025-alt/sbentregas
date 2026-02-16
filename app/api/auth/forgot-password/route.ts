@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import crypto from 'crypto';
+import { isValidDocument } from '@/lib/document-validator';
 
 // POST - Solicitar recuperação de senha via CPF/CNPJ
 export async function POST(request: NextRequest) {
@@ -16,6 +17,14 @@ export async function POST(request: NextRequest) {
 
     // Limpar formatação do documento (remover pontos, traços, barras)
     const cleanDocument = documentNumber.replace(/[^\d]/g, '');
+
+    // Validar documento
+    if (!isValidDocument(cleanDocument)) {
+      return NextResponse.json(
+        { error: cleanDocument.length === 11 ? 'CPF inválido' : 'CNPJ inválido' },
+        { status: 400 }
+      );
+    }
 
     // Buscar usuário pelo documento
     const user = await prisma.user.findFirst({

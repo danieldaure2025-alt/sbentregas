@@ -3,19 +3,20 @@ import { prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { UserRole, UserStatus } from '@prisma/client';
 import { createAuditLog } from '@/lib/audit-logger';
+import { isValidDocument } from '@/lib/document-validator';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { 
+    const {
       email, password, name, role, phone, documentNumber, vehicleType, licenseNumber,
       pixKeyType, pixKey, bankCode, bankName, agencyNumber, accountNumber, accountType, accountHolder, cpfCnpj,
       // Establishment fields
       establishmentName, establishmentAddress, establishmentPhone, establishmentCnpj
     } = body;
-    
+
     // Processar documento (CPF/CNPJ)
     const cleanDocument = documentNumber ? documentNumber.replace(/\D/g, '') : null;
     const documentType = cleanDocument ? (cleanDocument.length <= 11 ? 'CPF' : 'CNPJ') : null;
@@ -35,6 +36,32 @@ export async function POST(req: NextRequest) {
     if (existingUser) {
       return NextResponse.json(
         { error: 'Usuário já existe com este email' },
+        { status: 400 }
+      );
+    }
+
+    // Validar documento principal (CPF/CNPJ)
+    if (cleanDocument && !isValidDocument(cleanDocument)) {
+      return NextResponse.json(
+        { error: documentType === 'CPF' ? 'CPF inválido' : 'CNPJ inválido' },
+        { status: 400 }
+      );
+    }
+
+    // Validar CNPJ do estabelecimento (se aplicável)
+    if (role === UserRole.ESTABLISHMENT && establishmentCnpj) {
+      if (!isValidDocument(establishmentCnpj)) {
+        return NextResponse.json(
+          { error: 'CNPJ do estabelecimento inválido' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validar CPF/CNPJ bancário (se fornecido)
+    if (cpfCnpj && !isValidDocument(cpfCnpj)) {
+      return NextResponse.json(
+        { error: 'CPF/CNPJ bancário inválido' },
         { status: 400 }
       );
     }

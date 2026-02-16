@@ -22,6 +22,7 @@ import {
   TrendingUp,
   CreditCard,
 } from 'lucide-react';
+import { isValidDocument, formatDocument as formatDocumentUtil } from '@/lib/document-validator';
 
 interface Delivery {
   id: string;
@@ -82,12 +83,12 @@ export default function FinancesPage() {
   const [data, setData] = useState<FinancesData | null>(null);
   const [period, setPeriod] = useState('month');
   const [activeTab, setActiveTab] = useState<'overview' | 'withdraw' | 'bank'>('overview');
-  
+
   // Withdraw form
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawMethod, setWithdrawMethod] = useState<'PIX' | 'TED'>('PIX');
   const [isWithdrawing, setIsWithdrawing] = useState(false);
-  
+
   // Bank data form
   const [bankData, setBankData] = useState<BankData>({});
   const [isSavingBank, setIsSavingBank] = useState(false);
@@ -148,6 +149,17 @@ export default function FinancesPage() {
   };
 
   const handleSaveBankData = async () => {
+    // Validar CPF/CNPJ se fornecido
+    if (bankData.cpfCnpj && !isValidDocument(bankData.cpfCnpj)) {
+      const cleanDoc = bankData.cpfCnpj.replace(/\D/g, '');
+      toast({
+        title: 'Erro',
+        description: cleanDoc.length === 11 ? 'CPF inválido. Verifique os dígitos.' : 'CNPJ inválido. Verifique os dígitos.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setIsSavingBank(true);
     try {
       const res = await fetch('/api/finances/bank-data', {
@@ -535,9 +547,15 @@ export default function FinancesPage() {
               <div>
                 <Label className="text-gray-300">CPF/CNPJ do Titular</Label>
                 <Input
-                  placeholder="000.000.000-00"
+                  placeholder="000.000.000-00 ou 00.000.000/0000-00"
                   value={bankData.cpfCnpj || ''}
-                  onChange={(e) => setBankData({ ...bankData, cpfCnpj: e.target.value })}
+                  onChange={(e) => {
+                    const formatted = formatDocumentUtil(e.target.value);
+                    const numbersOnly = formatted.replace(/\D/g, '');
+                    if (numbersOnly.length <= 14) {
+                      setBankData({ ...bankData, cpfCnpj: formatted });
+                    }
+                  }}
                   className={inputClass + " mt-1"}
                 />
               </div>
