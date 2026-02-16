@@ -33,6 +33,7 @@ export default function NewOrderPage() {
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [endOfDayBillingEnabled, setEndOfDayBillingEnabled] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [isDeliveryClient, setIsDeliveryClient] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -44,8 +45,8 @@ export default function NewOrderPage() {
     recipientName?: string;
     notes?: string;
   }) => {
-    // Update origin address if found
-    if (info.originAddress) {
+    // Update origin address if found (only if not delivery client)
+    if (info.originAddress && !isDeliveryClient) {
       setOriginAddresses([{ id: '1', address: info.originAddress }]);
     }
 
@@ -85,6 +86,7 @@ export default function NewOrderPage() {
 
               // Auto-preencher endereço de origem para clientes delivery
               if (userData.user?.clientType === 'DELIVERY' && userData.user?.clientAddress) {
+                setIsDeliveryClient(true);
                 setOriginAddresses([{
                   id: 'delivery-client-address',
                   address: userData.user.clientAddress
@@ -471,18 +473,28 @@ export default function NewOrderPage() {
                   <MapPin className="w-4 h-4 text-green-600" />
                   Endereço(s) de Coleta
                 </Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addOriginAddress}
-                  disabled={isCreatingOrder}
-                  className="text-green-600 border-green-600 hover:bg-green-50"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Adicionar Coleta
-                </Button>
+                {!isDeliveryClient && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addOriginAddress}
+                    disabled={isCreatingOrder}
+                    className="text-green-600 border-green-600 hover:bg-green-50"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Adicionar Coleta
+                  </Button>
+                )}
               </div>
+
+              {isDeliveryClient && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-2">
+                  <p className="text-sm text-blue-400">
+                    ℹ️ Como cliente delivery, seu endereço cadastrado é usado automaticamente como ponto de coleta.
+                  </p>
+                </div>
+              )}
 
               {originAddresses.map((origin, index) => (
                 <div key={origin.id} className="flex gap-2">
@@ -495,10 +507,11 @@ export default function NewOrderPage() {
                       value={origin.address}
                       onChange={(e) => updateOriginAddress(origin.id, e.target.value)}
                       className="pl-12"
-                      disabled={isCreatingOrder}
+                      disabled={isCreatingOrder || isDeliveryClient}
+                      readOnly={isDeliveryClient}
                     />
                   </div>
-                  {originAddresses.length > 1 && (
+                  {originAddresses.length > 1 && !isDeliveryClient && (
                     <Button
                       type="button"
                       variant="ghost"

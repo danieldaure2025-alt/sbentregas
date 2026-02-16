@@ -24,13 +24,24 @@ export async function GET(req: NextRequest) {
 
     const url = new URL(req.url);
     const period = url.searchParams.get('period') || 'month';
+    const startDateParam = url.searchParams.get('startDate');
+    const endDateParam = url.searchParams.get('endDate');
 
-    let startDate = new Date();
-    if (period === 'day') {
+    let startDate: Date;
+    let endDate: Date = new Date();
+
+    if (startDateParam && endDateParam) {
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (period === 'day') {
+      startDate = new Date();
       startDate.setHours(0, 0, 0, 0);
     } else if (period === 'week') {
+      startDate = new Date();
       startDate.setDate(startDate.getDate() - 7);
     } else if (period === 'month') {
+      startDate = new Date();
       startDate.setMonth(startDate.getMonth() - 1);
     } else {
       startDate = new Date(0);
@@ -40,7 +51,7 @@ export async function GET(req: NextRequest) {
     const transactions = await prisma.transaction.findMany({
       where: {
         paymentStatus: PaymentStatus.COMPLETED,
-        createdAt: { gte: startDate },
+        createdAt: { gte: startDate, lte: endDate },
       },
       include: {
         order: {
@@ -61,7 +72,7 @@ export async function GET(req: NextRequest) {
     const orderStats = await prisma.order.groupBy({
       by: ['status'],
       _count: true,
-      where: { createdAt: { gte: startDate } },
+      where: { createdAt: { gte: startDate, lte: endDate } },
     });
 
     // Payment methods breakdown
@@ -70,7 +81,7 @@ export async function GET(req: NextRequest) {
       _count: true,
       _sum: { price: true },
       where: {
-        createdAt: { gte: startDate },
+        createdAt: { gte: startDate, lte: endDate },
         status: { not: OrderStatus.CANCELLED },
       },
     });
@@ -88,7 +99,7 @@ export async function GET(req: NextRequest) {
 
     // All withdrawals for history
     const allWithdrawals = await prisma.withdrawal.findMany({
-      where: { createdAt: { gte: startDate } },
+      where: { createdAt: { gte: startDate, lte: endDate } },
       include: {
         user: { select: { name: true, email: true } },
       },
@@ -101,7 +112,7 @@ export async function GET(req: NextRequest) {
       _sum: { amount: true },
       where: {
         status: { in: [WithdrawalStatus.COMPLETED, WithdrawalStatus.APPROVED] },
-        createdAt: { gte: startDate },
+        createdAt: { gte: startDate, lte: endDate },
       },
     });
 
@@ -111,7 +122,7 @@ export async function GET(req: NextRequest) {
       _count: true,
       where: {
         status: OrderStatus.DELIVERED,
-        createdAt: { gte: startDate },
+        createdAt: { gte: startDate, lte: endDate },
         deliveryPersonId: { not: null },
       },
       orderBy: { _count: { deliveryPersonId: 'desc' } },

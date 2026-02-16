@@ -90,6 +90,8 @@ model User {
   establishmentLongitude Float?
   establishmentPhone     String?
   establishmentCnpj      String?
+  pricingType            PricingType?         @default(POR_KM)
+  fixedDeliveryFee       Float?
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
   accounts               Account[]
@@ -109,6 +111,7 @@ model User {
   ratingsReceived        Rating[]             @relation("DeliveryPersonRatings")
   sessions               Session[]
   withdrawals            Withdrawal[]
+  neighborhoodPricings   NeighborhoodPricing[]
 
   @@index([email])
   @@index([deliveryStatus])
@@ -423,6 +426,21 @@ model Notification {
   @@index([createdAt])
 }
 
+model NeighborhoodPricing {
+  id           String   @id @default(cuid())
+  userId       String
+  neighborhood String
+  price        Float
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, neighborhood])
+  @@index([userId])
+  @@index([neighborhood])
+}
+
 enum UserRole {
   ADMIN
   CLIENT
@@ -518,6 +536,11 @@ enum MessageType {
 enum ClientType {
   NORMAL
   DELIVERY
+}
+
+enum PricingType {
+  POR_KM
+  POR_BAIRRO
 }
 
 enum NotificationType {

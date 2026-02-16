@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     // Calcular distância real usando API de rotas
     const routeData = await calculateRouteDistance(originCoords, destCoords);
-    
+
     if (!routeData) {
       return NextResponse.json(
         { error: 'Não foi possível calcular a rota entre os endereços' },
@@ -46,8 +46,73 @@ export async function POST(req: NextRequest) {
 
     const { distance, duration } = routeData;
 
-    // Calculate price com a distância real
-    const { price, platformFee, deliveryFee } = await calculateOrderPrice(distance);
+    // Buscar configurações do usuário para verificar pricing personalizado
+    const { prisma } = await import('@/lib/db');
+    const userData = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        clientType: true,
+        pricingType: true,
+        fixedDeliveryFee: true,
+        neighborhoodPricings: {
+          where: { isActive: true },
+          select: {
+            neighborhood: true,
+            price: true,
+          },
+        },
+      },
+    });
+
+    let price: number;
+    let platformFee: number;
+    let deliveryFee: number;
+
+    // Se o cliente é tipo DELIVERY e tem configurações especiais
+    if (userData?.clientType === 'DELIVERY') {
+      // Opção 1: Taxa fixa do estabelecimento (ignora distância/bairro)
+      if (userData.fixedDeliveryFee && userData.fixedDeliveryFee > 0) {
+        deliveryFee = userData.fixedDeliveryFee;
+        const { DEFAULT_SYSTEM_SETTINGS } = await import('@/lib/constants');
+        platformFee = deliveryFee * DEFAULT_SYSTEM_SETTINGS.PLATFORM_FEE_PERCENTAGE;
+        price = deliveryFee + platformFee;
+      }
+      // Opção 2: Preço por bairro
+      else if (userData.pricingType === 'POR_BAIRRO' && userData.neighborhoodPricings.length > 0) {
+        // Extrair bairro do endereço de destino
+        const destAddressLower = destinationAddress.toLowerCase();
+        let foundNeighborhood = userData.neighborhoodPricings.find((np: { neighborhood: string; price: number }) =>
+          destAddressLower.includes(np.neighborhood.toLowerCase())
+        );
+
+        if (foundNeighborhood) {
+          deliveryFee = foundNeighborhood.price;
+          const { DEFAULT_SYSTEM_SETTINGS } = await import('@/lib/constants');
+          platformFee = deliveryFee * DEFAULT_SYSTEM_SETTINGS.PLATFORM_FEE_PERCENTAGE;
+          price = deliveryFee + platformFee;
+        } else {
+          // Bairro não encontrado, usar cálculo padrão
+          const priceData = await calculateOrderPrice(distance);
+          price = priceData.price;
+          platformFee = priceData.platformFee;
+          deliveryFee = priceData.deliveryFee;
+        }
+      }
+      // Opção 3: Cálculo padrão por KM
+      else {
+        const priceData = await calculateOrderPrice(distance);
+        price = priceData.price;
+        platformFee = priceData.platformFee;
+        deliveryFee = priceData.deliveryFee;
+      }
+    }
+    // Cliente normal: usar cálculo padrão
+    else {
+      const priceData = await calculateOrderPrice(distance);
+      price = priceData.price;
+      platformFee = priceData.platformFee;
+      deliveryFee = priceData.deliveryFee;
+    }
 
     return NextResponse.json({
       distance: Number(distance.toFixed(2)),

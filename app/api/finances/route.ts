@@ -25,14 +25,26 @@ export async function GET(req: NextRequest) {
     const userId = session.user.id;
     const url = new URL(req.url);
     const period = url.searchParams.get('period') || 'month'; // day, week, month, all
+    const startDateParam = url.searchParams.get('startDate');
+    const endDateParam = url.searchParams.get('endDate');
 
-    // Calcular data de início baseado no período
-    let startDate = new Date();
-    if (period === 'day') {
+    // Calcular data de início baseado no período ou usar startDate/endDate customizado
+    let startDate: Date;
+    let endDate: Date = new Date();
+
+    if (startDateParam && endDateParam) {
+      // Usar datas customizadas
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+      endDate.setHours(23, 59, 59, 999); // Final do dia
+    } else if (period === 'day') {
+      startDate = new Date();
       startDate.setHours(0, 0, 0, 0);
     } else if (period === 'week') {
+      startDate = new Date();
       startDate.setDate(startDate.getDate() - 7);
     } else if (period === 'month') {
+      startDate = new Date();
       startDate.setMonth(startDate.getMonth() - 1);
     } else {
       startDate = new Date(0); // all time
@@ -43,7 +55,10 @@ export async function GET(req: NextRequest) {
       where: {
         deliveryPersonId: userId,
         status: OrderStatus.DELIVERED,
-        completedAt: { gte: startDate },
+        completedAt: {
+          gte: startDate,
+          lte: endDate,
+        },
       },
       include: {
         transactions: {
@@ -63,7 +78,10 @@ export async function GET(req: NextRequest) {
     const withdrawals = await prisma.withdrawal.findMany({
       where: {
         userId,
-        createdAt: { gte: startDate },
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
