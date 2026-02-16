@@ -49,6 +49,9 @@ interface User {
   establishmentAddress?: string;
   establishmentPhone?: string;
   establishmentCnpj?: string;
+  // Client
+  clientType?: string;
+  clientAddress?: string;
   // Billing
   endOfDayBilling?: boolean;
   createdAt: string;
