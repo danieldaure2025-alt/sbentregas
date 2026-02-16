@@ -27,6 +27,8 @@ export function StatusBadge({ status, type }: StatusBadgeProps) {
           return 'bg-indigo-100 text-indigo-800 border-indigo-200';
         case 'IN_TRANSIT':
           return 'bg-purple-100 text-purple-800 border-purple-200';
+        case 'PROBLEM':
+          return 'bg-amber-100 text-amber-900 border-amber-300';
         case 'DELIVERED':
           return 'bg-green-100 text-green-800 border-green-200';
         case 'CANCELLED':

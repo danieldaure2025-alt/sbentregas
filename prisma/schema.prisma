@@ -154,6 +154,10 @@ model Order {
   inTransitAt          DateTime?
   completedAt          DateTime?
   cancelledAt          DateTime?
+  problemType          String?        // Tipo do problema reportado
+  problemDescription   String?        // Descrição detalhada do problema
+  problemReportedAt    DateTime?      // Quando o problema foi reportado
+  problemResolvedAt    DateTime?      // Quando o problema foi resolvido
   auditLogs            AuditLog[]
   chat                 Chat?
   eventLogs            EventLog[]
@@ -460,6 +464,7 @@ enum OrderStatus {
   ACCEPTED
   PICKED_UP
   IN_TRANSIT
+  PROBLEM
   DELIVERED
   CANCELLED
   NO_COURIER_AVAILABLE

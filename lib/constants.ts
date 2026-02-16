@@ -11,6 +11,7 @@ export const ORDER_STATUS_LABELS = {
   ACCEPTED: 'Aceito',
   PICKED_UP: 'Coletado',
   IN_TRANSIT: 'Em Rota',
+  PROBLEM: 'Problema Reportado',
   DELIVERED: 'Entregue',
   CANCELLED: 'Cancelado',
   NO_COURIER_AVAILABLE: 'Sem Entregador Disponível',

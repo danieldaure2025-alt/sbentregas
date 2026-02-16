@@ -78,8 +78,9 @@ export async function PATCH(
       AWAITING_PAYMENT: [OrderStatus.PENDING, OrderStatus.CANCELLED],
       PENDING: [OrderStatus.CANCELLED, OrderStatus.NO_COURIER_AVAILABLE],
       ACCEPTED: [OrderStatus.PICKED_UP, OrderStatus.CANCELLED],
-      PICKED_UP: [OrderStatus.IN_TRANSIT, OrderStatus.CANCELLED],
-      IN_TRANSIT: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+      PICKED_UP: [OrderStatus.IN_TRANSIT, 'PROBLEM' as OrderStatus, OrderStatus.CANCELLED],
+      IN_TRANSIT: [OrderStatus.DELIVERED, 'PROBLEM' as OrderStatus, OrderStatus.CANCELLED],
+      PROBLEM: [OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED, OrderStatus.CANCELLED] as OrderStatus[],
       DELIVERED: [], // Final state
       CANCELLED: [], // Final state
       NO_COURIER_AVAILABLE: [OrderStatus.PENDING], // Admin can retry distribution
@@ -135,6 +136,7 @@ export async function PATCH(
           select: {
             id: true,
             name: true,
+            email: true,
             phone: true,
           },
         },
@@ -158,6 +160,36 @@ export async function PATCH(
       ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || undefined,
       userAgent: req.headers.get('user-agent') || undefined,
     });
+
+    // Send email notifications for specific status changes
+    // Execute asynchronously to not block the response
+    if (
+      status === OrderStatus.PICKED_UP ||
+      status === 'PROBLEM' ||
+      status === OrderStatus.DELIVERED
+    ) {
+      try {
+        const { sendOrderStatusNotification } = await import('@/lib/email-service');
+
+        // Fire and forget - don't await the notification
+        sendOrderStatusNotification({
+          orderId: updatedOrder.id,
+          clientName: updatedOrder.client.name || 'Cliente',
+          clientEmail: updatedOrder.client.email,
+          originAddress: updatedOrder.originAddress,
+          destinationAddress: updatedOrder.destinationAddress,
+          deliveryPersonName: updatedOrder.deliveryPerson?.name || undefined,
+          deliveryPersonPhone: updatedOrder.deliveryPerson?.phone || undefined,
+          problemDescription: updateData.problemDescription,
+          status: status as OrderStatus,
+        }).catch(error => {
+          // Log error but don't block the response
+          console.error('Failed to send email notification:', error);
+        });
+      } catch (error) {
+        console.error('Failed to load email service:', error);
+      }
+    }
 
     return NextResponse.json({
       order: updatedOrder,
