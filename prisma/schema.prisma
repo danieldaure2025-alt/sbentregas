@@ -80,6 +80,7 @@ model User {
   fcmToken               String?
   fcmTokenUpdatedAt      DateTime?
   endOfDayBilling        Boolean              @default(false)
+  billingPeriod          BillingPeriod?       @default(DAILY)  // Período de cobrança (dia/semana/mês)
   clientType             ClientType?          @default(NORMAL)
   clientAddress          String?
   clientLatitude         Float?
@@ -549,6 +550,12 @@ enum PricingType {
   POR_BAIRRO
 }
 
+enum BillingPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
 enum NotificationType {
   NEW_ORDER
   ORDER_ACCEPTED
@@ -562,4 +569,18 @@ enum NotificationType {
   CHAT_MESSAGE
   ADMIN_NOTICE
   DAILY_REPORT
+}
+
+
+model AppSettings {
+  id              String   @id @default(cuid())
+  pixKeyType      String?
+  pixKey          String?
+  pixAccountName  String?
+  platformName    String?
+  supportEmail    String?
+  supportPhone    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  updatedById     String?
 }

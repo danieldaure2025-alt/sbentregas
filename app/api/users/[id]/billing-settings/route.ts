@@ -31,6 +31,7 @@ export async function GET(
         name: true,
         email: true,
         endOfDayBilling: true,
+        billingPeriod: true,
       },
     });
 
@@ -66,16 +67,20 @@ export async function PUT(
 
     const { id } = await params;
     const body = await req.json();
-    const { endOfDayBilling } = body;
+    const { endOfDayBilling, billingPeriod } = body;
 
     const user = await prisma.user.update({
       where: { id },
-      data: { endOfDayBilling },
+      data: {
+        ...(typeof endOfDayBilling === 'boolean' && { endOfDayBilling }),
+        ...(billingPeriod && { billingPeriod }),
+      },
       select: {
         id: true,
         name: true,
         email: true,
         endOfDayBilling: true,
+        billingPeriod: true,
       },
     });
 
