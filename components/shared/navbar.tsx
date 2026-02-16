@@ -57,17 +57,25 @@ export function Navbar() {
         { href: '/dashboard/settings', label: 'Configurações', icon: Settings },
       ];
     } else if (userRole === UserRole.CLIENT) {
-      return [
+      const links = [
         ...baseLinks,
         { href: '/dashboard/new-order', label: 'Novo Pedido', icon: PlusCircle },
         { href: '/dashboard/orders', label: 'Meus Pedidos', icon: History },
       ];
+
+      // Add settings link for DELIVERY type clients
+      if ((session?.user as any)?.clientType === 'DELIVERY') {
+        links.push({ href: '/dashboard/client-settings', label: 'Configurações', icon: Settings });
+      }
+
+      return links;
     } else if (userRole === UserRole.DELIVERY_PERSON) {
       return [
         ...baseLinks,
         { href: '/dashboard/available', label: 'Disponíveis', icon: ShoppingCart },
         { href: '/dashboard/my-deliveries', label: 'Minhas Entregas', icon: TruckIcon },
         { href: '/dashboard/finances', label: 'Finanças', icon: Wallet },
+        { href: '/dashboard/delivery-settings', label: 'Configurações', icon: Settings },
       ];
     } else if (userRole === UserRole.ESTABLISHMENT) {
       return [
@@ -119,11 +127,10 @@ export function Navbar() {
                     <Button
                       variant={isActive ? 'default' : 'ghost'}
                       size="sm"
-                      className={`flex items-center space-x-2 ${
-                        isActive
+                      className={`flex items-center space-x-2 ${isActive
                           ? 'bg-orange-500 text-white hover:bg-orange-600'
                           : 'text-gray-300 hover:text-white hover:bg-white/10'
-                      }`}
+                        }`}
                     >
                       <Icon className="w-4 h-4" />
                       <span>{link.label}</span>
@@ -137,7 +144,7 @@ export function Navbar() {
           <div className="flex items-center space-x-4">
             {/* Notification Badge */}
             <NotificationBadge />
-            
+
             <div className="hidden sm:block text-sm text-right">
               <p className="font-medium text-white">{session?.user?.name}</p>
               <p className="text-xs text-orange-400">
@@ -178,11 +185,10 @@ export function Navbar() {
                     <Button
                       variant={isActive ? 'default' : 'ghost'}
                       size="sm"
-                      className={`w-full justify-start ${
-                        isActive
+                      className={`w-full justify-start ${isActive
                           ? 'bg-orange-500 text-white'
                           : 'text-gray-300 hover:text-white hover:bg-white/10'
-                      }`}
+                        }`}
                     >
                       <Icon className="w-4 h-4 mr-2" />
                       <span>{link.label}</span>
