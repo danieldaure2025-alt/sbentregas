@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loading } from '@/components/shared/loading';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useToast } from '@/hooks/use-toast';
+import { DateRangeFilter, DateRange } from '@/components/financial/date-range-filter';
+import { exportToExcel, exportToCSV } from '@/lib/utils/export-excel';
 import {
   DollarSign,
   TrendingUp,
@@ -27,6 +29,8 @@ import {
   Banknote,
   CreditCard,
   RefreshCw,
+  FileSpreadsheet,
+  Download,
 } from 'lucide-react';
 
 interface Withdrawal {
@@ -109,15 +113,19 @@ export default function AdminFinancesPage() {
   const [loading, setLoading] = useState(true);
   const [financeData, setFinanceData] = useState<FinanceData | null>(null);
   const [neighborhoodData, setNeighborhoodData] = useState<NeighborhoodData | null>(null);
-  const [period, setPeriod] = useState('month');
+  const [dateRange, setDateRange] = useState<DateRange>({});
   const [processingWithdrawal, setProcessingWithdrawal] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      const params = new URLSearchParams();
+      if (dateRange.startDate) params.set('startDate', dateRange.startDate);
+      if (dateRange.endDate) params.set('endDate', dateRange.endDate);
+
       const [financeRes, neighborhoodRes] = await Promise.all([
-        fetch(`/api/finances/admin?period=${period}`),
-        fetch(`/api/dashboard/stats/neighborhoods?period=${period}`),
+        fetch(`/api/finances/admin?${params.toString()}`),
+        fetch(`/api/dashboard/stats/neighborhoods?${params.toString()}`),
       ]);
 
       if (!financeRes.ok) {
@@ -147,7 +155,7 @@ export default function AdminFinancesPage() {
 
   useEffect(() => {
     fetchData();
-  }, [period]);
+  }, [dateRange]);
 
   const handleWithdrawalAction = async (id: string, action: 'approve' | 'reject' | 'complete') => {
     setProcessingWithdrawal(id);
@@ -203,6 +211,60 @@ export default function AdminFinancesPage() {
     }
   };
 
+  const handleExportTransactions = () => {
+    if (!financeData?.recentTransactions?.length) return;
+    const exportData = financeData.recentTransactions.map(t => ({
+      ID: t.id,
+      Cliente: t.order.client.name,
+      Entregador: t.order.deliveryPerson?.name || '-',
+      Origem: t.order.originAddress,
+      Destino: t.order.destinationAddress,
+      'Valor Total (R$)': t.totalAmount.toFixed(2),
+      'Taxa Plataforma (R$)': t.platformFee.toFixed(2),
+      'Taxa Entrega (R$)': t.deliveryFee.toFixed(2),
+      'Método Pagamento': t.paymentMethod,
+      'Data': new Date(t.createdAt).toLocaleString('pt-BR'),
+    }));
+    exportToExcel(exportData, { filename: 'transacoes_admin', sheetName: 'Transações' });
+  };
+
+  const handleExportWithdrawals = () => {
+    if (!financeData?.allWithdrawals?.length) return;
+    const exportData = financeData.allWithdrawals.map(w => ({
+      ID: w.id,
+      Entregador: w.user.name,
+      Email: w.user.email,
+      'Valor (R$)': w.amount.toFixed(2),
+      Método: w.method,
+      Status: w.status,
+      'Chave PIX': w.pixKey || '-',
+      'Banco': w.bankName || '-',
+      'Agência': w.agencyNumber || '-',
+      'Conta': w.accountNumber || '-',
+      'Data Solicitação': new Date(w.createdAt).toLocaleString('pt-BR'),
+      'Data Processamento': w.processedAt ? new Date(w.processedAt).toLocaleString('pt-BR') : '-',
+      'Notas Admin': w.adminNotes || '-',
+    }));
+    exportToCSV(exportData, { filename: 'saques_admin' });
+  };
+
+  const handleExportNeighborhoods = () => {
+    if (!neighborhoodData?.neighborhoods?.length) return;
+    const exportData = neighborhoodData.neighborhoods.map(n => ({
+      Bairro: n.name,
+      'Total Pedidos': n.totalOrders,
+      Entregues: n.delivered,
+      Cancelados: n.cancelled,
+      Pendentes: n.pending,
+      'Em Andamento': n.inProgress,
+      'Receita Total (R$)': n.totalRevenue.toFixed(2),
+      '% Entregue': n.deliveredPercent.toFixed(2),
+      '% Cancelado': n.cancelledPercent.toFixed(2),
+      Entregadores: n.deliveryPersons.join(', '),
+    }));
+    exportToExcel(exportData, { filename: 'estatisticas_bairros', sheetName: 'Bairros' });
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -211,21 +273,20 @@ export default function AdminFinancesPage() {
           <p className="text-foreground/60">Gestão financeira completa da plataforma</p>
         </div>
         <div className="flex items-center gap-2">
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            className="bg-card border border-border rounded-lg px-4 py-2 text-foreground"
-          >
-            <option value="day">Hoje</option>
-            <option value="week">7 dias</option>
-            <option value="month">30 dias</option>
-            <option value="all">Todo período</option>
-          </select>
+          <Button onClick={handleExportTransactions} size="sm" className="bg-green-600 hover:bg-green-700">
+            <FileSpreadsheet className="h-4 w-4 mr-2" />Excel
+          </Button>
+          <Button onClick={handleExportWithdrawals} size="sm" className="bg-blue-600 hover:bg-blue-700">
+            <Download className="h-4 w-4 mr-2" />CSV
+          </Button>
           <Button variant="outline" onClick={fetchData}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
       </div>
+
+      {/* Date Filter */}
+      <DateRangeFilter onDateChange={setDateRange} defaultPeriod="month" />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

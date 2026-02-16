@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loading } from '@/components/shared/loading';
 import { useToast } from '@/hooks/use-toast';
+import { DateRangeFilter, DateRange } from '@/components/financial/date-range-filter';
+import { exportToExcel, exportToCSV } from '@/lib/utils/export-excel';
 import {
   Wallet,
   ArrowDownCircle,
@@ -21,6 +23,8 @@ import {
   Calendar,
   TrendingUp,
   CreditCard,
+  FileSpreadsheet,
+  Download,
 } from 'lucide-react';
 import { isValidDocument, formatDocument as formatDocumentUtil } from '@/lib/document-validator';
 
@@ -81,7 +85,7 @@ export default function FinancesPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<FinancesData | null>(null);
-  const [period, setPeriod] = useState('month');
+  const [dateRange, setDateRange] = useState<DateRange>({});
   const [activeTab, setActiveTab] = useState<'overview' | 'withdraw' | 'bank'>('overview');
 
   // Withdraw form
@@ -95,7 +99,11 @@ export default function FinancesPage() {
 
   const fetchData = async () => {
     try {
-      const res = await fetch(`/api/finances?period=${period}`);
+      const params = new URLSearchParams();
+      if (dateRange.startDate) params.set('startDate', dateRange.startDate);
+      if (dateRange.endDate) params.set('endDate', dateRange.endDate);
+
+      const res = await fetch(`/api/finances?${params.toString()}`);
       if (res.ok) {
         const result = await res.json();
         setData(result);
@@ -110,7 +118,7 @@ export default function FinancesPage() {
 
   useEffect(() => {
     fetchData();
-  }, [period]);
+  }, [dateRange]);
 
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
@@ -198,6 +206,33 @@ export default function FinancesPage() {
     }
   };
 
+  const handleExportDeliveries = () => {
+    if (!data?.deliveries?.length) return;
+    const exportData = data.deliveries.map(d => ({
+      ID: d.id,
+      Origem: d.originAddress,
+      Destino: d.destinationAddress,
+      'Data Conclusão': new Date(d.completedAt).toLocaleString('pt-BR'),
+      'Taxa Entrega (R$)': d.deliveryFee.toFixed(2),
+    }));
+    exportToExcel(exportData, { filename: 'minhas_entregas', sheetName: 'Entregas' });
+    toast({ title: 'Exportado!', description: 'Entregas exportadas para Excel' });
+  };
+
+  const handleExportWithdrawals = () => {
+    if (!data?.withdrawals?.length) return;
+    const exportData = data.withdrawals.map(w => ({
+      ID: w.id,
+      'Valor (R$)': w.amount.toFixed(2),
+      Método: w.method,
+      Status: w.status,
+      'Data Solicitação': new Date(w.createdAt).toLocaleString('pt-BR'),
+      'Data Processamento': w.processedAt ? new Date(w.processedAt).toLocaleString('pt-BR') : '-',
+    }));
+    exportToCSV(exportData, { filename: 'meus_saques' });
+    toast({ title: 'Exportado!', description: 'Saques exportados para CSV' });
+  };
+
   if (loading) return <Loading />;
 
   const inputClass = "bg-[hsl(220,15%,13%)] border-[hsl(220,15%,20%)] text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500/20";
@@ -213,17 +248,18 @@ export default function FinancesPage() {
           </h1>
           <p className="text-gray-400">Gerencie seus ganhos e saques</p>
         </div>
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          className={selectClass + " w-auto"}
-        >
-          <option value="day">Hoje</option>
-          <option value="week">Esta Semana</option>
-          <option value="month">Este Mês</option>
-          <option value="all">Todo Período</option>
-        </select>
+        <div className="flex gap-2">
+          <Button onClick={handleExportDeliveries} className="bg-green-600 hover:bg-green-700" size="sm">
+            <FileSpreadsheet className="w-4 h-4 mr-2" /> Excel
+          </Button>
+          <Button onClick={handleExportWithdrawals} className="bg-blue-600 hover:bg-blue-700" size="sm">
+            <Download className="w-4 h-4 mr-2" /> CSV
+          </Button>
+        </div>
       </div>
+
+      {/* Date Filter */}
+      <DateRangeFilter onDateChange={setDateRange} defaultPeriod="month" />
 
       {/* Cards de Resumo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
