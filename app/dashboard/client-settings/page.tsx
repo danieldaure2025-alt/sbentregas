@@ -292,8 +292,8 @@ export default function ClientSettingsPage() {
                                             <button
                                                 onClick={() => setPricingType('POR_KM')}
                                                 className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${pricingType === 'POR_KM'
-                                                        ? 'border-orange-500 bg-orange-500/10'
-                                                        : 'border-border hover:border-orange-500/50'
+                                                    ? 'border-orange-500 bg-orange-500/10'
+                                                    : 'border-border hover:border-orange-500/50'
                                                     }`}
                                             >
                                                 <div className={`w-4 h-4 rounded-full border-2 ${pricingType === 'POR_KM' ? 'border-orange-500 bg-orange-500' : 'border-border'
@@ -309,8 +309,8 @@ export default function ClientSettingsPage() {
                                             <button
                                                 onClick={() => setPricingType('POR_BAIRRO')}
                                                 className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${pricingType === 'POR_BAIRRO'
-                                                        ? 'border-orange-500 bg-orange-500/10'
-                                                        : 'border-border hover:border-orange-500/50'
+                                                    ? 'border-orange-500 bg-orange-500/10'
+                                                    : 'border-border hover:border-orange-500/50'
                                                     }`}
                                             >
                                                 <div className={`w-4 h-4 rounded-full border-2 ${pricingType === 'POR_BAIRRO' ? 'border-orange-500 bg-orange-500' : 'border-border'
@@ -347,37 +347,59 @@ export default function ClientSettingsPage() {
                                     Preços por Bairro
                                 </CardTitle>
                                 <CardDescription>
-                                    Configure os preços de entrega para cada bairro
+                                    Configure a <strong>taxa de entrega da plataforma</strong> que será cobrada do cliente final para cada bairro.
+                                    Este é o valor que seus clientes pagarão pela entrega.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
+                                {/* Info Alert */}
+                                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                                    <div className="flex gap-3">
+                                        <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                                        <div className="space-y-1 text-sm">
+                                            <p className="font-semibold text-blue-500">💡 Sobre a Taxa de Entrega</p>
+                                            <p className="text-muted-foreground">
+                                                O valor configurado aqui é a <strong>taxa de entrega da plataforma</strong> que será cobrada do seu cliente final quando ele fizer um pedido para o bairro especificado.
+                                            </p>
+                                            <p className="text-muted-foreground text-xs">
+                                                Exemplo: Se você definir R$ 10,00 para o bairro "Centro", quando um cliente solicitar uma entrega para o Centro, ele pagará R$ 10,00 de taxa de entrega.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                                 {/* Add Neighborhood Form */}
-                                <div className="flex gap-2">
-                                    <Input
-                                        placeholder="Nome do bairro"
-                                        value={newNeighborhood}
-                                        onChange={(e) => setNewNeighborhood(e.target.value)}
-                                        className="flex-1"
-                                    />
-                                    <Input
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="Preço"
-                                        value={newPrice}
-                                        onChange={(e) => setNewPrice(e.target.value)}
-                                        className="w-32"
-                                    />
-                                    <Button
-                                        onClick={handleAddNeighborhood}
-                                        disabled={addingNeighborhood}
-                                        className="bg-orange-500 hover:bg-orange-600"
-                                    >
-                                        {addingNeighborhood ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <Plus className="w-4 h-4" />
-                                        )}
-                                    </Button>
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium">Adicionar Novo Bairro</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="Ex: Centro, Jardins, Vila Mariana"
+                                            value={newNeighborhood}
+                                            onChange={(e) => setNewNeighborhood(e.target.value)}
+                                            className="flex-1"
+                                        />
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="Taxa (R$)"
+                                            value={newPrice}
+                                            onChange={(e) => setNewPrice(e.target.value)}
+                                            className="w-32"
+                                        />
+                                        <Button
+                                            onClick={handleAddNeighborhood}
+                                            disabled={addingNeighborhood}
+                                            className="bg-orange-500 hover:bg-orange-600"
+                                        >
+                                            {addingNeighborhood ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <Plus className="w-4 h-4" />
+                                            )}
+                                        </Button>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Digite o nome do bairro e a taxa de entrega que será cobrada do cliente
+                                    </p>
                                 </div>
 
                                 {/* Neighborhoods List */}
