@@ -75,6 +75,7 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
             status: user.status,
             image: user.image,
+            clientType: user.clientType,
           };
         } catch (error) {
           console.error('[AUTH ERROR] Erro durante autenticação:', error);
@@ -141,6 +142,7 @@ export const authOptions: NextAuthOptions = {
           token.id = user.id;
           token.role = (user as any)?.role || UserRole.CLIENT;
           token.status = (user as any)?.status || 'ACTIVE';
+          token.clientType = (user as any)?.clientType;
           token.lastRefresh = Date.now();
         }
 
@@ -152,7 +154,7 @@ export const authOptions: NextAuthOptions = {
           try {
             const dbUser = await prisma.user.findUnique({
               where: { email: token.email },
-              select: { id: true, role: true, status: true, name: true, email: true, image: true },
+              select: { id: true, role: true, status: true, name: true, email: true, image: true, clientType: true },
             });
 
             if (dbUser) {
@@ -161,6 +163,7 @@ export const authOptions: NextAuthOptions = {
               token.status = dbUser.status;
               token.name = dbUser.name;
               token.picture = dbUser.image;
+              token.clientType = dbUser.clientType;
               token.lastRefresh = Date.now();
             }
           } catch (dbError) {
@@ -181,6 +184,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.role = token.role as UserRole;
         session.user.status = token.status as string;
+        session.user.clientType = token.clientType as string;
       }
       return session;
     },
