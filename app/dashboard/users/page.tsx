@@ -9,8 +9,9 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { useToast } from '@/hooks/use-toast';
 import {
   Users, Filter, CheckCircle, XCircle, Loader2, Star, Clock,
-  FileText, QrCode, Building2, MapPin, Phone, Mail, Truck, ChevronDown, ChevronUp, Trash2
+  FileText, QrCode, Building2, MapPin, Phone, Mail, Truck, ChevronDown, ChevronUp, Trash2, Bell
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { USER_ROLE_LABELS } from '@/lib/constants';
 
 interface User {
@@ -54,6 +55,8 @@ interface User {
   clientAddress?: string;
   // Billing
   endOfDayBilling?: boolean;
+  // Notifications
+  emailNotificationsEnabled?: boolean;
   createdAt: string;
 }
 
@@ -162,6 +165,40 @@ export default function UsersPage() {
       toast({
         title: 'Erro',
         description: error?.message || 'Erro ao atualizar configuração',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const handleToggleNotifications = async (userId: string, currentValue: boolean) => {
+    setUpdatingUserId(userId);
+    try {
+      const res = await fetch(`/api/users/${userId}/notification-settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailNotificationsEnabled: !currentValue }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao atualizar notificações');
+      }
+
+      toast({
+        title: 'Sucesso!',
+        description: !currentValue
+          ? 'Notificações por email ativadas'
+          : 'Notificações por email desativadas',
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error?.message || 'Erro ao atualizar notificações',
         variant: 'destructive',
       });
     } finally {
@@ -642,22 +679,37 @@ export default function UsersPage() {
                         </Button>
 
                         {user.role === 'CLIENT' && user.status === 'ACTIVE' && (
-                          <Button
-                            size="sm"
-                            variant={user.endOfDayBilling ? 'outline' : 'secondary'}
-                            onClick={() => handleToggleEndOfDayBilling(user.id, user.endOfDayBilling ?? false)}
-                            disabled={updatingUserId !== null}
-                            className={`w-full mt-2 ${user.endOfDayBilling ? 'border-green-500/50 text-green-500 hover:bg-green-500/10' : ''}`}
-                          >
-                            {updatingUserId === user.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <>
-                                <Clock className="w-4 h-4 mr-2" />
-                                {user.endOfDayBilling ? 'Desativar EOD' : 'Ativar EOD'}
-                              </>
-                            )}
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              variant={user.endOfDayBilling ? 'outline' : 'secondary'}
+                              onClick={() => handleToggleEndOfDayBilling(user.id, user.endOfDayBilling ?? false)}
+                              disabled={updatingUserId !== null}
+                              className={`w-full mt-2 ${user.endOfDayBilling ? 'border-green-500/50 text-green-500 hover:bg-green-500/10' : ''}`}
+                            >
+                              {updatingUserId === user.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Clock className="w-4 h-4 mr-2" />
+                                  {user.endOfDayBilling ? 'Desativar EOD' : 'Ativar EOD'}
+                                </>
+                              )}
+                            </Button>
+                            <div className="flex items-center justify-between p-2 rounded bg-muted/30 mt-2">
+                              <div className="flex items-center gap-2">
+                                <Bell className={`w-4 h-4 ${user.emailNotificationsEnabled ? 'text-green-500' : 'text-gray-400'}`} />
+                                <span className="text-sm">
+                                  {user.emailNotificationsEnabled ? 'Emails ativos' : 'Emails desativados'}
+                                </span>
+                              </div>
+                              <Switch
+                                checked={user.emailNotificationsEnabled ?? true}
+                                onCheckedChange={() => handleToggleNotifications(user.id, user.emailNotificationsEnabled ?? true)}
+                                disabled={updatingUserId !== null}
+                              />
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>

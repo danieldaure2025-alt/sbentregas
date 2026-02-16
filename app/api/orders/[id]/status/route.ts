@@ -138,6 +138,7 @@ export async function PATCH(
             name: true,
             email: true,
             phone: true,
+            emailNotificationsEnabled: true,
           },
         },
         deliveryPerson: {
@@ -182,6 +183,7 @@ export async function PATCH(
           deliveryPersonPhone: updatedOrder.deliveryPerson?.phone || undefined,
           problemDescription: updateData.problemDescription,
           status: status as OrderStatus,
+          emailNotificationsEnabled: updatedOrder.client.emailNotificationsEnabled,
         }).catch(error => {
           // Log error but don't block the response
           console.error('Failed to send email notification:', error);

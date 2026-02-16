@@ -22,6 +22,7 @@ interface OrderNotificationData {
     deliveryPersonPhone?: string;
     problemDescription?: string;
     status: OrderStatus;
+    emailNotificationsEnabled?: boolean;  // Preferência do cliente
 }
 
 interface SendEmailOptions {
@@ -111,19 +112,23 @@ export async function sendOrderStatusNotification(data: OrderNotificationData): 
             return;
     }
 
-    // Enviar email para o cliente (não bloquear em caso de falha)
-    try {
-        await sendEmail({
-            to: clientEmail,
-            subject: clientEmailTemplate.subject,
-            html: clientEmailTemplate.html,
-        });
-    } catch (error) {
-        console.error(`Erro ao enviar email para cliente ${clientEmail}:`, error);
-        // Não lançar erro para não bloquear a atualização de status
+    // Enviar email para o cliente (apenas se notificações estiverem habilitadas)
+    if (data.emailNotificationsEnabled !== false) {
+        try {
+            await sendEmail({
+                to: clientEmail,
+                subject: clientEmailTemplate.subject,
+                html: clientEmailTemplate.html,
+            });
+        } catch (error) {
+            console.error(`Erro ao enviar email para cliente ${clientEmail}:`, error);
+            // Não lançar erro para não bloquear a atualização de status
+        }
+    } else {
+        console.log(`⏭️ Notificações por email desabilitadas para cliente ${clientEmail}`);
     }
 
-    // Enviar email para o administrador
+    // Enviar email para o administrador (SEMPRE, independente da preferência do cliente)
     if (ADMIN_EMAIL) {
         try {
             const adminTemplate = getAdminNotificationTemplate(emailData, status);
