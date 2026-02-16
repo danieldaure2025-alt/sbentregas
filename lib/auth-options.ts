@@ -61,7 +61,7 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          if (user?.status === 'PENDING_APPROVAL' && user?.role === 'DELIVERY_PERSON') {
+          if (user?.status === 'PENDING_APPROVAL' && (user?.role === 'DELIVERY_PERSON' || user?.role === 'ESTABLISHMENT')) {
             console.log('[AUTH] Conta aguardando aprovação:', credentials.email);
             return null;
           }
@@ -111,7 +111,7 @@ export const authOptions: NextAuthOptions = {
               console.log('[SIGNIN] Account blocked:', user?.email);
               return '/auth/error?error=AccountBlocked';
             }
-            if (existingUser?.status === 'PENDING_APPROVAL' && existingUser?.role === 'DELIVERY_PERSON') {
+            if (existingUser?.status === 'PENDING_APPROVAL' && (existingUser?.role === 'DELIVERY_PERSON' || existingUser?.role === 'ESTABLISHMENT')) {
               console.log('[SIGNIN] Account pending approval:', user?.email);
               return '/auth/error?error=PendingApproval';
             }
