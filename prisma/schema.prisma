@@ -144,6 +144,7 @@ model Order {
   deliveryPhotoUrl     String?
   deliveryPhotoKey     String?
   clientPhone          String?
+  orderNumber          String?        @unique  // Número único do pedido (ex: #ABC12345)
   status               OrderStatus    @default(AWAITING_PAYMENT)
   price                Float
   distance             Float

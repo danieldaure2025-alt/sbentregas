@@ -7,6 +7,7 @@ import { calculateOrderPrice, geocodeAddress, calculateRouteDistance } from '@/l
 import { createAuditLog } from '@/lib/audit-logger';
 import { sendNewOrderNotification } from '@/lib/firebase-admin';
 import { haversineDistance, GEO_CONSTANTS } from '@/lib/geo-utils';
+import { generateUniqueOrderNumber } from '@/lib/order-number';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
     }
 
     const routeData = await calculateRouteDistance(originCoords, destCoords);
-    
+
     if (!routeData) {
       return NextResponse.json(
         { error: 'Não foi possível calcular a rota entre os endereços' },
@@ -134,14 +135,18 @@ export async function POST(req: NextRequest) {
 
     // Validar método de pagamento
     const validPaymentMethods = ['CREDIT_CARD', 'PIX', 'DEBIT_CARD', 'CASH', 'END_OF_DAY'];
-    const selectedPaymentMethod = validPaymentMethods.includes(paymentMethod) 
-      ? paymentMethod as PaymentMethod 
+    const selectedPaymentMethod = validPaymentMethods.includes(paymentMethod)
+      ? paymentMethod as PaymentMethod
       : PaymentMethod.CREDIT_CARD;
+
+    // Gerar número único do pedido
+    const orderNumber = await generateUniqueOrderNumber(prisma);
 
     // Create order with coordinates (Coordinates format: [longitude, latitude])
     const order = await prisma.order.create({
       data: {
         clientId: session.user.id,
+        orderNumber,  // Adicionar número do pedido
         originAddress,
         originLatitude: originCoords[1],
         originLongitude: originCoords[0],
@@ -220,7 +225,7 @@ export async function POST(req: NextRequest) {
               { deliveryStatus: DeliveryPersonStatus.ONLINE },
             ],
           },
-          select: { 
+          select: {
             fcmToken: true,
             currentLatitude: true,
             currentLongitude: true,
@@ -231,14 +236,14 @@ export async function POST(req: NextRequest) {
         // Filtrar entregadores por proximidade (dentro do raio máximo de coleta)
         const nearbyDeliveryPersons = onlineDeliveryPersons.filter(dp => {
           if (!dp.currentLatitude || !dp.currentLongitude) return false;
-          
+
           const distanceToPickup = haversineDistance(
             dp.currentLatitude,
             dp.currentLongitude,
             originCoords[1], // latitude
             originCoords[0]  // longitude
           );
-          
+
           console.log(`Entregador ${dp.name}: ${distanceToPickup.toFixed(2)}km do ponto de coleta`);
           return distanceToPickup <= GEO_CONSTANTS.MAX_PICKUP_DISTANCE_KM;
         });
