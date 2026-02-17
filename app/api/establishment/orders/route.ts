@@ -12,8 +12,13 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id || session.user.role !== UserRole.ESTABLISHMENT) {
+
+    // Permitir tanto ESTABLISHMENT role quanto CLIENT com tipo DELIVERY
+    const isEstablishment =
+      session?.user?.role === UserRole.ESTABLISHMENT ||
+      (session?.user?.role === UserRole.CLIENT && session?.user?.clientType === 'DELIVERY');
+
+    if (!session?.user?.id || !isEstablishment) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
@@ -75,8 +80,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id || session.user.role !== UserRole.ESTABLISHMENT) {
+
+    // Permitir tanto ESTABLISHMENT role quanto CLIENT com tipo DELIVERY
+    const isEstablishment =
+      session?.user?.role === UserRole.ESTABLISHMENT ||
+      (session?.user?.role === UserRole.CLIENT && session?.user?.clientType === 'DELIVERY');
+
+    if (!session?.user?.id || !isEstablishment) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
@@ -123,7 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     const routeData = await calculateRouteDistance(originCoords, destCoords);
-    
+
     if (!routeData) {
       return NextResponse.json(
         { error: 'Não foi possível calcular a rota' },
