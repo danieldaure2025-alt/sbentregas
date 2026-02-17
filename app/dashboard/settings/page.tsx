@@ -67,9 +67,14 @@ export default function SettingsPage() {
 
   // Carregar informações do estabelecimento
   useEffect(() => {
-    if (!isEstablishment) return;
-
     const fetchEstablishmentInfo = async () => {
+      // Só buscar se for estabelecimento
+      const isEst =
+        session?.user?.role === 'ESTABLISHMENT' ||
+        (session?.user?.role === 'CLIENT' && session?.user?.clientType === 'DELIVERY');
+
+      if (!isEst) return;
+
       try {
         const response = await fetch('/api/establishment/info');
         if (response.ok) {
@@ -88,7 +93,7 @@ export default function SettingsPage() {
       }
     };
     fetchEstablishmentInfo();
-  }, [isEstablishment]);
+  }, [session]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSettings((prev) => ({
