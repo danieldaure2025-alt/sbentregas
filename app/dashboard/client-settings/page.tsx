@@ -33,6 +33,7 @@ export default function ClientSettingsPage() {
     const [addingNeighborhood, setAddingNeighborhood] = useState(false);
     const [clientType, setClientType] = useState<string | null>(null);
     const [platformFeePercentage, setPlatformFeePercentage] = useState<number>(0);
+    const [maxDeliveryDistance, setMaxDeliveryDistance] = useState<number>(15);
 
     // Estados para endereço do estabelecimento
     const [establishmentInfo, setEstablishmentInfo] = useState({
@@ -69,6 +70,7 @@ export default function ClientSettingsPage() {
             setPricingType(settingsData.user?.pricingType || 'POR_KM');
             setFixedDeliveryFee(settingsData.user?.fixedDeliveryFee?.toString() || '');
             setPlatformFeePercentage(settingsData.user?.platformFeePercentage || 0);
+            setMaxDeliveryDistance(settingsData.user?.maxDeliveryDistance || 15);
             setNeighborhoods(neighborhoodsData.neighborhoods || []);
 
             // Carregar endereço do estabelecimento
@@ -102,6 +104,7 @@ export default function ClientSettingsPage() {
                 body: JSON.stringify({
                     pricingType,
                     fixedDeliveryFee: fixedDeliveryFee ? parseFloat(fixedDeliveryFee) : null,
+                    maxDeliveryDistance,
                 }),
             });
 
@@ -445,6 +448,28 @@ export default function ClientSettingsPage() {
                                                 </div>
                                             </button>
                                         </div>
+
+                                        {/* Maximum Distance Configuration (only for POR BAIRRO) */}
+                                        {pricingType === 'POR_BAIRRO' && (
+                                            <div className="mt-4 p-4 border border-blue-500/30 bg-blue-500/5 rounded-lg space-y-3">
+                                                <Label htmlFor="maxDistance" className="text-sm font-semibold flex items-center gap-2">
+                                                    <MapPin className="w-4 h-4 text-blue-500" />
+                                                    Distância Máxima para Entrega (km)
+                                                </Label>
+                                                <Input
+                                                    id="maxDistance"
+                                                    type="number"
+                                                    step="0.5"
+                                                    min="1"
+                                                    value={maxDeliveryDistance}
+                                                    onChange={(e) => setMaxDeliveryDistance(parseFloat(e.target.value) || 15)}
+                                                    className="max-w-xs"
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    Define a distância máxima permitida do ponto de coleta para entrega quando usar taxa por bairro. Entregas acima deste limite serão bloqueadas.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

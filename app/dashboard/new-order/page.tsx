@@ -34,6 +34,8 @@ export default function NewOrderPage() {
   const [endOfDayBillingEnabled, setEndOfDayBillingEnabled] = useState(false);
   const [isDeliveryClient, setIsDeliveryClient] = useState(false);
   const [pricingType, setPricingType] = useState<string | null>(null);
+  const [selectedPricingType, setSelectedPricingType] = useState<'POR_KM' | 'POR_BAIRRO'>('POR_KM');
+  const [maxDeliveryDistance, setMaxDeliveryDistance] = useState(15);
   const [showCamera, setShowCamera] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -85,6 +87,8 @@ export default function NewOrderPage() {
               const userData = await userRes.json();
               setEndOfDayBillingEnabled(userData.user?.endOfDayBilling ?? false);
               setPricingType(userData.user?.pricingType || null);
+              setSelectedPricingType(userData.user?.pricingType || 'POR_KM');
+              setMaxDeliveryDistance(userData.user?.maxDeliveryDistance || 15);
 
               // Auto-preencher endereço de origem para clientes delivery
               if (userData.user?.clientType === 'DELIVERY' && userData.user?.clientAddress) {
@@ -193,6 +197,36 @@ export default function NewOrderPage() {
 
     setIsCalculating(true);
     try {
+      // Validar distância para tipo Por Bairro ANTES de calcular
+      if (selectedPricingType === 'POR_BAIRRO') {
+        // Primeiro fazemos um cálculo preliminar apenas para obter a distância
+        const prelimRes = await fetch('/api/calculate-price', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            originAddress: validOrigins[0].address,
+            destinationAddress: validDestinations[validDestinations.length - 1].address,
+            additionalStops: validOrigins.length + validDestinations.length - 2,
+          }),
+        });
+
+        if (prelimRes.ok) {
+          const prelimData = await prelimRes.json();
+          const distance = parseFloat(prelimData.distance);
+
+          if (distance > maxDeliveryDistance) {
+            toast({
+              title: '⚠️ Distância Excedida',
+              description: `A distância de ${distance.toFixed(1)}km excede o limite máximo de ${maxDeliveryDistance}km para taxa por bairro. Use cobrança por KM para distâncias maiores.`,
+              variant: 'destructive',
+              duration: 6000,
+            });
+            setIsCalculating(false);
+            return;
+          }
+        }
+      }
+
       // Calculate using the first origin and first destination for base price
       // For multiple stops, we calculate cumulative distance
       const res = await fetch('/api/calculate-price', {
@@ -628,6 +662,65 @@ export default function NewOrderPage() {
                   disabled={isCreatingOrder}
                 />
               </div>
+            </div>
+
+            {/* Pricing Type Selector */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Tipo de Cobrança</Label>
+              <div className="grid gap-3">
+                {/* Por Quilometragem */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPricingType('POR_KM')}
+                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${selectedPricingType === 'POR_KM'
+                    ? 'border-orange-500 bg-orange-500/10'
+                    : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
+                    }`}
+                >
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${selectedPricingType === 'POR_KM' ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-300'
+                    }`}>
+                    <Navigation className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className={`font-semibold ${selectedPricingType === 'POR_KM' ? 'text-orange-400' : 'text-white'}`}>Por Quilometragem</p>
+                    <p className="text-sm text-gray-400">Preço calculado pela distância percorrida - sem limite de distância</p>
+                  </div>
+                  {selectedPricingType === 'POR_KM' && (
+                    <CheckCircle className="w-6 h-6 text-orange-500" />
+                  )}
+                </button>
+
+                {/* Por Taxa de Bairro */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPricingType('POR_BAIRRO')}
+                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${selectedPricingType === 'POR_BAIRRO'
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
+                    }`}
+                >
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${selectedPricingType === 'POR_BAIRRO' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
+                    }`}>
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className={`font-semibold ${selectedPricingType === 'POR_BAIRRO' ? 'text-blue-400' : 'text-white'}`}>Por Taxa de Bairro</p>
+                    <p className="text-sm text-gray-400">Taxa fixa por bairro de destino - distância máxima: {maxDeliveryDistance}km</p>
+                  </div>
+                  {selectedPricingType === 'POR_BAIRRO' && (
+                    <CheckCircle className="w-6 h-6 text-blue-500" />
+                  )}
+                </button>
+              </div>
+
+              {/* Warning for distance limit */}
+              {selectedPricingType === 'POR_BAIRRO' && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                  <p className="text-sm text-blue-400">
+                    ⚠️ Entregas acima de {maxDeliveryDistance}km não poderão ser realizadas com taxa de bairro. Use "Por Quilometragem" para distâncias maiores.
+                  </p>
+                </div>
+              )}
             </div>
 
             <Button

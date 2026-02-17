@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
         clientType: true,
         pricingType: true,
         fixedDeliveryFee: true,
+        maxDeliveryDistance: true,
         platformFeePercentage: true,
         establishmentName: true,
         establishmentAddress: true,
@@ -92,6 +93,7 @@ export async function PUT(req: NextRequest) {
       data: {
         pricingType: pricingType || undefined,
         fixedDeliveryFee: fixedDeliveryFee !== undefined ? parseFloat(fixedDeliveryFee) : undefined,
+        maxDeliveryDistance: body.maxDeliveryDistance !== undefined ? parseFloat(body.maxDeliveryDistance) : undefined,
         establishmentAddress: establishmentAddress !== undefined ? establishmentAddress : undefined,
         establishmentNeighborhood: establishmentNeighborhood !== undefined ? establishmentNeighborhood : undefined,
         establishmentCity: establishmentCity !== undefined ? establishmentCity : undefined,
