@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { title, message, imageUrl, targetAudience, isActive } = body;
+        const { title, message, imageUrl, targetAudience, isActive, isImportant } = body;
 
         if (!title || !message || !imageUrl || !targetAudience) {
             return NextResponse.json(
@@ -86,6 +86,7 @@ export async function POST(request: NextRequest) {
                 targetAudience,
                 sentBy: session.user.id,
                 isActive: isActive !== undefined ? isActive : true,
+                isImportant: isImportant !== undefined ? isImportant : false,
             },
             include: {
                 admin: {
@@ -93,6 +94,41 @@ export async function POST(request: NextRequest) {
                 },
             },
         });
+
+        // 📢 NOVA FUNCIONALIDADE: Enviar push automática para entregadores em avisos importantes
+        if (isImportant && (targetAudience === 'DELIVERY_PERSONS' || targetAudience === 'ALL')) {
+            try {
+                // Importação dinâmica para evitar erro se o módulo não existir
+                const { sendPushNotificationToMultiple } = await import('@/lib/firebase-admin');
+
+                // Buscar FCM tokens dos entregadores
+                const deliveryPersons = await prisma.user.findMany({
+                    where: {
+                        role: UserRole.DELIVERY_PERSON,
+                        fcmToken: { not: null },
+                    },
+                    select: { fcmToken: true },
+                });
+
+                const fcmTokens = deliveryPersons
+                    .map((u) => u.fcmToken)
+                    .filter((token): token is string => token !== null);
+
+                if (fcmTokens.length > 0) {
+                    // Enviar notificação push
+                    await sendPushNotificationToMultiple(fcmTokens, {
+                        title: `📢 Aviso Importante: ${title}`,
+                        body: message,
+                        icon: imageUrl,
+                    });
+
+                    console.log(`[ANNOUNCEMENT] Push automática enviada para ${fcmTokens.length} entregadores`);
+                }
+            } catch (pushError) {
+                console.error('[ANNOUNCEMENT] Erro ao enviar push automática:', pushError);
+                // Não falha a criação do anúncio se o push falhar
+            }
+        }
 
         return NextResponse.json({ announcement }, { status: 201 });
     } catch (error) {

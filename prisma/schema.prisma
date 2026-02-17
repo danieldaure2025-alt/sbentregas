@@ -602,12 +602,14 @@ model Announcement {
   sentBy         String
   sentAt         DateTime @default(now())
   isActive       Boolean  @default(true)
+  isImportant    Boolean  @default(false) // Envia push automática para entregadores
 
   admin User @relation(fields: [sentBy], references: [id], onDelete: Cascade)
 
   @@index([sentAt])
   @@index([targetAudience])
   @@index([isActive])
+  @@index([isImportant])
 }
 
 model PushNotification {

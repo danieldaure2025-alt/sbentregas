@@ -23,6 +23,7 @@ interface Announcement {
     targetAudience: string;
     sentAt: string;
     isActive: boolean;
+    isImportant: boolean;
     admin: { name: string; email: string };
 }
 
@@ -58,6 +59,7 @@ export default function NotificationsPage() {
         imageUrl: '',
         targetAudience: 'ALL',
         isActive: true,
+        isImportant: false,
     });
     const [savingAnnouncement, setSavingAnnouncement] = useState(false);
 
@@ -172,6 +174,7 @@ export default function NotificationsPage() {
                 imageUrl: '',
                 targetAudience: 'ALL',
                 isActive: true,
+                isImportant: false,
             });
             fetchAnnouncements();
         } catch (error) {
@@ -390,6 +393,11 @@ export default function NotificationsPage() {
                                                                         }`}>
                                                                         {announcement.isActive ? 'Ativo' : 'Inativo'}
                                                                     </span>
+                                                                    {announcement.isImportant && (
+                                                                        <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-semibold">
+                                                                            📢 Importante
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div className="flex gap-2">
@@ -482,6 +490,22 @@ export default function NotificationsPage() {
                                     <Label htmlFor="ann-active" className="font-normal cursor-pointer">Ativar imediatamente</Label>
                                 </div>
 
+                                <div className="flex items-center space-x-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <Switch
+                                        id="ann-important"
+                                        checked={announcementForm.isImportant}
+                                        onCheckedChange={(checked) => setAnnouncementForm({ ...announcementForm, isImportant: checked })}
+                                    />
+                                    <div className="flex-1">
+                                        <Label htmlFor="ann-important" className="font-semibold cursor-pointer flex items-center gap-1">
+                                            📢 Aviso Importante
+                                        </Label>
+                                        <p className="text-xs text-amber-700 mt-1">
+                                            Envia notificação push automática para entregadores
+                                        </p>
+                                    </div>
+                                </div>
+
                                 <div className="flex gap-2">
                                     <Button
                                         onClick={handleCreateAnnouncement}
@@ -506,6 +530,7 @@ export default function NotificationsPage() {
                                                 imageUrl: '',
                                                 targetAudience: 'ALL',
                                                 isActive: true,
+                                                isImportant: false,
                                             });
                                         }}
                                     >
