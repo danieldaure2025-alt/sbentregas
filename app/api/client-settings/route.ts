@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
         clientType: true,
         pricingType: true,
         fixedDeliveryFee: true,
+        platformFeePercentage: true,
         establishmentName: true,
         establishmentAddress: true,
         establishmentNeighborhood: true,

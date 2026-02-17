@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { neighborhood, price, platformFee } = body;
+        const { neighborhood, price } = body;
 
         if (!neighborhood || !neighborhood.trim()) {
             return NextResponse.json(
@@ -61,13 +61,14 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const parsedPlatformFee = platformFee ? parseFloat(platformFee) : 0;
-        if (isNaN(parsedPlatformFee) || parsedPlatformFee < 0) {
-            return NextResponse.json(
-                { error: 'Taxa da plataforma inválida' },
-                { status: 400 }
-            );
-        }
+        // Buscar a porcentagem de taxa de plataforma do usuário
+        const user = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { platformFeePercentage: true },
+        });
+
+        const platformFeePercentage = user?.platformFeePercentage || 0;
+        const calculatedPlatformFee = parsedPrice * (platformFeePercentage / 100);
 
         // Verificar se já existe
         const existing = await prisma.neighborhoodPricing.findUnique({
@@ -91,7 +92,8 @@ export async function POST(req: NextRequest) {
                 userId: session.user.id,
                 neighborhood: neighborhood.trim(),
                 price: parsedPrice,
-                platformFee: parsedPlatformFee,
+                platformFee: calculatedPlatformFee,
+                platformFeePercentage: platformFeePercentage,
                 isActive: true,
             },
         });

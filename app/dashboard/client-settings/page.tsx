@@ -30,9 +30,9 @@ export default function ClientSettingsPage() {
     const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
     const [newNeighborhood, setNewNeighborhood] = useState('');
     const [newPrice, setNewPrice] = useState('');
-    const [newPlatformFee, setNewPlatformFee] = useState('');
     const [addingNeighborhood, setAddingNeighborhood] = useState(false);
     const [clientType, setClientType] = useState<string | null>(null);
+    const [platformFeePercentage, setPlatformFeePercentage] = useState<number>(0);
 
     // Estados para endereço do estabelecimento
     const [establishmentInfo, setEstablishmentInfo] = useState({
@@ -68,6 +68,7 @@ export default function ClientSettingsPage() {
             setClientType(settingsData.user?.clientType || null);
             setPricingType(settingsData.user?.pricingType || 'POR_KM');
             setFixedDeliveryFee(settingsData.user?.fixedDeliveryFee?.toString() || '');
+            setPlatformFeePercentage(settingsData.user?.platformFeePercentage || 0);
             setNeighborhoods(neighborhoodsData.neighborhoods || []);
 
             // Carregar endereço do estabelecimento
@@ -142,7 +143,6 @@ export default function ClientSettingsPage() {
                 body: JSON.stringify({
                     neighborhood: newNeighborhood.trim(),
                     price: parseFloat(newPrice),
-                    platformFee: newPlatformFee ? parseFloat(newPlatformFee) : 0,
                 }),
             });
 
@@ -155,7 +155,6 @@ export default function ClientSettingsPage() {
             setNeighborhoods([...neighborhoods, data.neighborhood]);
             setNewNeighborhood('');
             setNewPrice('');
-            setNewPlatformFee('');
             toast({
                 title: 'Sucesso',
                 description: 'Bairro adicionado!',
@@ -508,14 +507,6 @@ export default function ClientSettingsPage() {
                                             onChange={(e) => setNewPrice(e.target.value)}
                                             className="w-32"
                                         />
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="Tx. Plataforma (R$)"
-                                            value={newPlatformFee}
-                                            onChange={(e) => setNewPlatformFee(e.target.value)}
-                                            className="w-40"
-                                        />
                                         <Button
                                             onClick={handleAddNeighborhood}
                                             disabled={addingNeighborhood}
@@ -529,7 +520,7 @@ export default function ClientSettingsPage() {
                                         </Button>
                                     </div>
                                     <p className="text-xs text-muted-foreground">
-                                        Digite o bairro, taxa de entrega total (cobrada do cliente) e taxa da plataforma (retida pela plataforma)
+                                        Digite o bairro e taxa de entrega total. Taxa da plataforma ({platformFeePercentage}%) será aplicada automaticamente.
                                     </p>
                                 </div>
 
@@ -555,7 +546,7 @@ export default function ClientSettingsPage() {
                                                             <p className="text-sm text-orange-500">Taxa Total: R$ {n.price.toFixed(2)}</p>
                                                             {n.platformFee > 0 && (
                                                                 <p className="text-xs text-muted-foreground">
-                                                                    Taxa Plataforma: R$ {n.platformFee.toFixed(2)} | 
+                                                                    Taxa Plataforma: R$ {n.platformFee.toFixed(2)} |
                                                                     Entregador: R$ {(n.price - n.platformFee).toFixed(2)}
                                                                 </p>
                                                             )}
