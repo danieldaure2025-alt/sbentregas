@@ -69,7 +69,6 @@ export async function sendPushNotification(
           defaultVibrateTimings: true,
           visibility: 'public', // Show on lockscreen
           sticky: false,
-          eventTimestamp: Date.now(),
           localOnly: false,
         },
       },
@@ -150,7 +149,6 @@ export async function sendPushNotificationToMultiple(
           defaultVibrateTimings: true,
           visibility: 'public', // Show on lockscreen
           sticky: false,
-          eventTimestamp: Date.now(),
           localOnly: false,
         },
       },
