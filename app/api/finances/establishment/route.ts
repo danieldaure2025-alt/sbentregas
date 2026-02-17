@@ -144,7 +144,6 @@ export async function GET(request: Request) {
             paymentMethodDistribution,
             orders: orders.map(order => ({
                 id: order.id,
-                trackingCode: order.trackingCode,
                 originAddress: order.originAddress,
                 destinationAddress: order.destinationAddress,
                 status: order.status,
