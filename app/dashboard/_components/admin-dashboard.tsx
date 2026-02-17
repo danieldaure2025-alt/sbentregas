@@ -210,6 +210,18 @@ export default function AdminDashboard() {
         </Card>
 
         <Card className="hover:shadow-md transition-shadow cursor-pointer">
+          <Link href="/dashboard/admin/daily-closing">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Clock className="w-5 h-5" />
+                <span>Fechamento Diário</span>
+              </CardTitle>
+              <CardDescription>Relatório de pedidos por cliente</CardDescription>
+            </CardHeader>
+          </Link>
+        </Card>
+
+        <Card className="hover:shadow-md transition-shadow cursor-pointer">
           <Link href="/dashboard/settings">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
