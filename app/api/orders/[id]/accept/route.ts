@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { UserRole, OrderStatus, UserStatus } from '@prisma/client';
 import { createAuditLog } from '@/lib/audit-logger';
+import { sendOrderAcceptedNotification } from '@/lib/firebase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +73,7 @@ export async function POST(
             id: true,
             name: true,
             phone: true,
+            fcmToken: true,  // Needed for push notification
           },
         },
         deliveryPerson: {
@@ -93,6 +95,21 @@ export async function POST(
       ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || undefined,
       userAgent: req.headers.get('user-agent') || undefined,
     });
+
+    // Send push notification to client
+    if (updatedOrder.client.fcmToken && updatedOrder.orderNumber) {
+      try {
+        await sendOrderAcceptedNotification(updatedOrder.client.fcmToken, {
+          orderId: updatedOrder.id,
+          orderNumber: updatedOrder.orderNumber,
+          deliveryPersonName: updatedOrder.deliveryPerson?.name || 'Entregador',
+        });
+        console.log('Push notification sent to client after order acceptance');
+      } catch (pushError) {
+        console.error('Error sending acceptance notification to client:', pushError);
+        // Don't fail the order acceptance if push notification fails
+      }
+    }
 
     return NextResponse.json({
       order: updatedOrder,

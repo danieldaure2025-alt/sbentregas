@@ -4,7 +4,7 @@ import admin from 'firebase-admin';
 function getFirebaseAdmin() {
   if (admin.apps.length === 0) {
     const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-    
+
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
@@ -122,7 +122,7 @@ export async function sendPushNotificationToMultiple(
     };
 
     const response = await messaging.sendEachForMulticast(message);
-    
+
     const errors: string[] = [];
     response.responses.forEach((resp, idx) => {
       if (!resp.success && resp.error) {
@@ -131,7 +131,7 @@ export async function sendPushNotificationToMultiple(
     });
 
     console.log(`Push notifications sent: ${response.successCount} success, ${response.failureCount} failures`);
-    
+
     return {
       successCount: response.successCount,
       failureCount: response.failureCount,
@@ -191,6 +191,34 @@ export async function sendOrderStatusNotification(
       type: 'ORDER_STATUS',
       orderId: orderDetails.orderId,
       status: orderDetails.status,
+    },
+  };
+
+  const result = await sendPushNotification(fcmToken, notification);
+  return result.success;
+}
+
+/**
+ * Send notification to client when delivery person accepts order
+ */
+export async function sendOrderAcceptedNotification(
+  fcmToken: string,
+  orderDetails: {
+    orderId: string;
+    orderNumber: string;
+    deliveryPersonName: string;
+    estimatedTime?: string;
+  }
+): Promise<boolean> {
+  const notification: PushNotificationData = {
+    title: '✅ Pedido Aceito!',
+    body: `${orderDetails.deliveryPersonName} aceitou seu pedido ${orderDetails.orderNumber}!${orderDetails.estimatedTime ? ` Entrega prevista: ${orderDetails.estimatedTime}` : ''}`,
+    icon: '/icons/icon-192x192.png',
+    data: {
+      type: 'ORDER_ACCEPTED',
+      orderId: orderDetails.orderId,
+      orderNumber: orderDetails.orderNumber,
+      deliveryPersonName: orderDetails.deliveryPersonName,
     },
   };
 
