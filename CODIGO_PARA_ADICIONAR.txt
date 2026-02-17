@@ -1,0 +1,136 @@
+// ==================================================
+// CÓDIGO 1: ATUALIZAR EXIBIÇÃO DA TAXA NA LISTA
+// ==================================================
+// Localização: Aproximadamente linha 550-555
+// Substituir o bloco que exibe o preço do bairro por:
+
+<div className="flex items-center gap-3">
+    <MapPin className={`w-4 h-4 ${n.isActive ? 'text-orange-500' : 'text-muted-foreground'}`} />
+    <div>
+        <p className="font-medium">{n.neighborhood}</p>
+        <div>
+            <p className="text-sm text-orange-500">Taxa Total: R$ {n.price.toFixed(2)}</p>
+            {n.platformFee > 0 && (
+                <p className="text-xs text-muted-foreground">
+                    Taxa Plataforma: R$ {n.platformFee.toFixed(2)} | 
+                    Entregador: R$ {(n.price - n.platformFee).toFixed(2)}
+                </p>
+            )}
+        </div>
+    </div>
+
+
+// ==================================================
+// CÓDIGO 2: ADICIONAR ABA DE ENDEREÇO COMPLETA
+// ==================================================
+// Localização: Linha 578, ANTES de </TabsContent>
+// Adicionar APÓS a linha que fecha </TabsContent> da aba "pricing"
+// e ANTES da linha que fecha </Tabs>
+
+                {/* Address Tab */}
+                <TabsContent value="address" className="space-y-4">
+                    <Card className="border-orange-500/30">
+                        <CardHeader>
+                            <CardTitle className="flex items-center space-x-2">
+                                <Home className="w-5 h-5 text-orange-500" />
+                                <span>Endereço do Estabelecimento</span>
+                            </CardTitle>
+                            <CardDescription>
+                                Configure o endereço base para suas entregas. O bairro é preenchido automaticamente.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="establishmentAddress">Endereço Completo *</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="establishmentAddress"
+                                        value={establishmentInfo.establishmentAddress}
+                                        onChange={handleAddressChange}
+                                        placeholder="Ex: Rua das Flores, 123, Centro"
+                                        className="flex-1"
+                                    />
+                                    <Button
+                                        onClick={handleGeocodeAddress}
+                                        disabled={geocoding || !establishmentInfo.establishmentAddress}
+                                        size="lg"
+                                        className="bg-orange-500 hover:bg-orange-600"
+                                    >
+                                        {geocoding ? (
+                                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        ) : (
+                                            <Search className="w-4 h-4 mr-2" />
+                                        )}
+                                        {geocoding ? 'Buscando...' : 'Auto-preencher'}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Digite o endereço completo e clique em "Auto-preencher" para buscar o bairro
+                                </p>
+                            </div>
+
+                            <div className="grid md:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="establishmentNeighborhood">Bairro</Label>
+                                    <Input
+                                        id="establishmentNeighborhood"
+                                        value={establishmentInfo.establishmentNeighborhood}
+                                        readOnly
+                                        disabled
+                                        placeholder="Auto-preenchido"
+                                        className="bg-muted"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="establishmentCity">Cidade</Label>
+                                    <Input
+                                        id="establishmentCity"
+                                        value={establishmentInfo.establishmentCity}
+                                        readOnly
+                                        disabled
+                                        placeholder="Auto-preenchido"
+                                        className="bg-muted"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="establishmentState">Estado</Label>
+                                    <Input
+                                        id="establishmentState"
+                                        value={establishmentInfo.establishmentState}
+                                        readOnly
+                                        disabled
+                                        placeholder="Auto-preenchido"
+                                        className="bg-muted"
+                                    />
+                                </div>
+                            </div>
+
+                            {establishmentInfo.establishmentNeighborhood && (
+                                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-900/20 border border-green-500/30">
+                                    <Check className="w-4 h-4 text-green-400" />
+                                    <p className="text-sm text-green-400">
+                                        Bairro identificado: <strong>{establishmentInfo.establishmentNeighborhood}</strong>
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="pt-4 border-t">
+                                <Button
+                                    onClick={handleSaveAddress}
+                                    size="lg"
+                                    disabled={savingAddress || !establishmentInfo.establishmentAddress}
+                                    className="bg-orange-500 hover:bg-orange-600"
+                                >
+                                    {savingAddress ? (
+                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    ) : (
+                                        <Home className="w-4 h-4 mr-2" />
+                                    )}
+                                    {savingAddress ? 'Salvando...' : 'Salvar Endereço'}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>

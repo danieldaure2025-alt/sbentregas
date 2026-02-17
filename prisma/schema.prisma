@@ -40,85 +40,87 @@ model Session {
 }
 
 model User {
-  id                     String               @id @default(cuid())
-  name                   String?
-  email                  String               @unique
-  emailVerified          DateTime?
-  image                  String?
-  passwordHash           String?
-  role                   UserRole             @default(CLIENT)
-  status                 UserStatus           @default(ACTIVE)
-  phone                  String?
-  googleId               String?              @unique
-  documentType           String?
-  documentNumber         String?
-  passwordResetToken     String?
-  passwordResetExpires   DateTime?
-  vehicleType            String?
-  licenseNumber          String?
-  rating                 Float?               @default(0)
-  totalDeliveries        Int?                 @default(0)
-  pixKeyType             String?
-  pixKey                 String?
-  bankCode               String?
-  bankName               String?
-  agencyNumber           String?
-  accountNumber          String?
-  accountType            String?
-  accountHolder          String?
-  cpfCnpj                String?
-  currentLatitude        Float?
-  currentLongitude       Float?
-  lastLocationUpdate     DateTime?
-  isOnline               Boolean              @default(false)
-  lastOnlineAt           DateTime?
-  deliveryStatus         DeliveryPersonStatus @default(OFFLINE)
-  activeOrderId          String?
-  priorityScore          Int                  @default(100)
-  rejectionsToday        Int                  @default(0)
-  lastRejectionsReset    DateTime?
-  fcmToken               String?
-  fcmTokenUpdatedAt      DateTime?
-  endOfDayBilling        Boolean              @default(false)
-  billingPeriod          BillingPeriod?       @default(DAILY)  // Período de cobrança (dia/semana/mês)
-  clientType             ClientType?          @default(NORMAL)
-  clientAddress          String?
-  clientLatitude         Float?
-  clientLongitude        Float?
-  establishmentName      String?
-  establishmentAddress   String?
-  establishmentNeighborhood String?  // Bairro do estabelecimento (auto-preenchido)
-  establishmentCity      String?     // Cidade do estabelecimento
-  establishmentState     String?     // Estado do estabelecimento
-  establishmentLatitude  Float?
-  establishmentLongitude Float?
-  establishmentPhone     String?
-  establishmentCnpj      String?
-  pricingType            PricingType?         @default(POR_KM)
-  fixedDeliveryFee       Float?
-  platformFeePercentage  Float?               @default(0)  // Porcentagem da taxa de plataforma por cliente
-  maxDeliveryDistance    Float?               @default(15) // Distância máxima em KM para taxa por bairro
-  emailNotificationsEnabled Boolean           @default(true)  // Habilitar/desabilitar notificações por email
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
-  accounts               Account[]
-  auditLogs              AuditLog[]
-  chatParticipations     ChatParticipant[]
-  dailyReports           DailyReport[]
-  emergencyAlerts        EmergencyAlert[]
-  eventLogs              EventLog[]
-  locationLogs           LocationLog[]
-  messagesSent           Message[]            @relation("SenderMessages")
-  notifications          Notification[]
-  ordersAsClient         Order[]              @relation("ClientOrders")
-  ordersAsDeliveryPerson Order[]              @relation("DeliveryPersonOrders")
-  ordersAsEstablishment  Order[]              @relation("EstablishmentOrders")
-  orderOffers            OrderOffer[]
-  ratingsGiven           Rating[]             @relation("ClientRatings")
-  ratingsReceived        Rating[]             @relation("DeliveryPersonRatings")
-  sessions               Session[]
-  withdrawals            Withdrawal[]
-  neighborhoodPricings   NeighborhoodPricing[]
+  id                        String                @id @default(cuid())
+  name                      String?
+  email                     String                @unique
+  emailVerified             DateTime?
+  image                     String?
+  passwordHash              String?
+  role                      UserRole              @default(CLIENT)
+  status                    UserStatus            @default(ACTIVE)
+  phone                     String?
+  googleId                  String?               @unique
+  documentType              String?
+  documentNumber            String?
+  passwordResetToken        String?
+  passwordResetExpires      DateTime?
+  vehicleType               String?
+  licenseNumber             String?
+  rating                    Float?                @default(0)
+  totalDeliveries           Int?                  @default(0)
+  pixKeyType                String?
+  pixKey                    String?
+  bankCode                  String?
+  bankName                  String?
+  agencyNumber              String?
+  accountNumber             String?
+  accountType               String?
+  accountHolder             String?
+  cpfCnpj                   String?
+  currentLatitude           Float?
+  currentLongitude          Float?
+  lastLocationUpdate        DateTime?
+  isOnline                  Boolean               @default(false)
+  lastOnlineAt              DateTime?
+  deliveryStatus            DeliveryPersonStatus  @default(OFFLINE)
+  activeOrderId             String?
+  priorityScore             Int                   @default(100)
+  rejectionsToday           Int                   @default(0)
+  lastRejectionsReset       DateTime?
+  fcmToken                  String?
+  fcmTokenUpdatedAt         DateTime?
+  endOfDayBilling           Boolean               @default(false)
+  billingPeriod             BillingPeriod?        @default(DAILY) // Período de cobrança (dia/semana/mês)
+  clientType                ClientType?           @default(NORMAL)
+  clientAddress             String?
+  clientLatitude            Float?
+  clientLongitude           Float?
+  establishmentName         String?
+  establishmentAddress      String?
+  establishmentNeighborhood String? // Bairro do estabelecimento (auto-preenchido)
+  establishmentCity         String? // Cidade do estabelecimento
+  establishmentState        String? // Estado do estabelecimento
+  establishmentLatitude     Float?
+  establishmentLongitude    Float?
+  establishmentPhone        String?
+  establishmentCnpj         String?
+  pricingType               PricingType?          @default(POR_KM)
+  fixedDeliveryFee          Float?
+  platformFeePercentage     Float?                @default(0) // Porcentagem da taxa de plataforma por cliente
+  maxDeliveryDistance       Float?                @default(15) // Distância máxima em KM para taxa por bairro
+  emailNotificationsEnabled Boolean               @default(true) // Habilitar/desabilitar notificações por email
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+  accounts                  Account[]
+  auditLogs                 AuditLog[]
+  chatParticipations        ChatParticipant[]
+  dailyReports              DailyReport[]
+  emergencyAlerts           EmergencyAlert[]
+  eventLogs                 EventLog[]
+  locationLogs              LocationLog[]
+  messagesSent              Message[]             @relation("SenderMessages")
+  notifications             Notification[]
+  ordersAsClient            Order[]               @relation("ClientOrders")
+  ordersAsDeliveryPerson    Order[]               @relation("DeliveryPersonOrders")
+  ordersAsEstablishment     Order[]               @relation("EstablishmentOrders")
+  orderOffers               OrderOffer[]
+  ratingsGiven              Rating[]              @relation("ClientRatings")
+  ratingsReceived           Rating[]              @relation("DeliveryPersonRatings")
+  sessions                  Session[]
+  withdrawals               Withdrawal[]
+  neighborhoodPricings      NeighborhoodPricing[]
+  announcements             Announcement[]
+  pushNotifications         PushNotification[]
 
   @@index([email])
   @@index([deliveryStatus])
@@ -149,7 +151,7 @@ model Order {
   deliveryPhotoUrl     String?
   deliveryPhotoKey     String?
   clientPhone          String?
-  orderNumber          String?        @unique  // Número único do pedido (ex: #ABC12345)
+  orderNumber          String?        @unique // Número único do pedido (ex: #ABC12345)
   status               OrderStatus    @default(AWAITING_PAYMENT)
   price                Float
   distance             Float
@@ -162,10 +164,10 @@ model Order {
   inTransitAt          DateTime?
   completedAt          DateTime?
   cancelledAt          DateTime?
-  problemType          String?        // Tipo do problema reportado
-  problemDescription   String?        // Descrição detalhada do problema
-  problemReportedAt    DateTime?      // Quando o problema foi reportado
-  problemResolvedAt    DateTime?      // Quando o problema foi resolvido
+  problemType          String? // Tipo do problema reportado
+  problemDescription   String? // Descrição detalhada do problema
+  problemReportedAt    DateTime? // Quando o problema foi reportado
+  problemResolvedAt    DateTime? // Quando o problema foi resolvido
   auditLogs            AuditLog[]
   chat                 Chat?
   eventLogs            EventLog[]
@@ -442,9 +444,9 @@ model NeighborhoodPricing {
   id                    String   @id @default(cuid())
   userId                String
   neighborhood          String
-  price                 Float    // Taxa de entrega total cobrada do cliente
-  platformFee           Float    @default(0)  // Taxa da plataforma (valor fixo em R$)
-  platformFeePercentage Float?   // Taxa da plataforma (porcentagem opcional)
+  price                 Float // Taxa de entrega total cobrada do cliente
+  platformFee           Float    @default(0) // Taxa da plataforma (valor fixo em R$)
+  platformFeePercentage Float? // Taxa da plataforma (porcentagem opcional)
   isActive              Boolean  @default(true)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -579,16 +581,47 @@ enum NotificationType {
   DAILY_REPORT
 }
 
-
 model AppSettings {
-  id              String   @id @default(cuid())
-  pixKeyType      String?
-  pixKey          String?
-  pixAccountName  String?
-  platformName    String?
-  supportEmail    String?
-  supportPhone    String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  updatedById     String?
+  id             String   @id @default(cuid())
+  pixKeyType     String?
+  pixKey         String?
+  pixAccountName String?
+  platformName   String?
+  supportEmail   String?
+  supportPhone   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Announcement {
+  id             String   @id @default(cuid())
+  title          String
+  message        String   @db.Text
+  imageUrl       String?
+  targetAudience String // 'CLIENTS', 'DELIVERY_PERSONS', 'ALL'
+  sentBy         String
+  sentAt         DateTime @default(now())
+  isActive       Boolean  @default(true)
+
+  admin User @relation(fields: [sentBy], references: [id], onDelete: Cascade)
+
+  @@index([sentAt])
+  @@index([targetAudience])
+  @@index([isActive])
+}
+
+model PushNotification {
+  id             String   @id @default(cuid())
+  title          String
+  body           String   @db.Text
+  imageUrl       String?
+  targetAudience String // 'CLIENTS', 'DELIVERY_PERSONS', 'ALL'
+  sentBy         String
+  sentAt         DateTime @default(now())
+  recipientCount Int      @default(0)
+
+  admin User @relation(fields: [sentBy], references: [id], onDelete: Cascade)
+
+  @@index([sentAt])
+  @@index([targetAudience])
 }
