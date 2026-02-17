@@ -78,7 +78,7 @@ export default function NotificationsPage() {
         try {
             const res = await fetch('/api/admin/announcements');
             if (res.ok) {
-                const data = await response.json();
+                const data = await res.json();
                 setAnnouncements(data.announcements || []);
             }
         } catch (error) {
@@ -385,8 +385,8 @@ export default function NotificationsPage() {
                                                                         {getAudienceLabel(announcement.targetAudience)}
                                                                     </span>
                                                                     <span className={`text-xs px-2 py-1 rounded ${announcement.isActive
-                                                                            ? 'bg-green-100 text-green-700'
-                                                                            : 'bg-gray-100 text-gray-700'
+                                                                        ? 'bg-green-100 text-green-700'
+                                                                        : 'bg-gray-100 text-gray-700'
                                                                         }`}>
                                                                         {announcement.isActive ? 'Ativo' : 'Inativo'}
                                                                     </span>
