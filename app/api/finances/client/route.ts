@@ -88,6 +88,12 @@ export async function GET(req: NextRequest) {
             return sum + (tx?.totalAmount || 0);
         }, 0);
 
+        // Calcular total cancelado
+        const cancelledTotal = cancelledOrders.reduce((sum, order) => {
+            const tx = order.transactions[0];
+            return sum + (tx?.totalAmount || 0);
+        }, 0);
+
         // Estatísticas por status
         const statsByStatus = allOrders.reduce((acc, order) => {
             const status = order.status;
@@ -122,6 +128,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({
             totalSpent,
+            cancelledTotal,
             activeOrders: activeOrders.length,
             completedOrders: completedOrders.length,
             cancelledOrders: cancelledOrders.length,

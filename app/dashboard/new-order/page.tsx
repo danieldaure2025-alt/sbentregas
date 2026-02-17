@@ -32,8 +32,9 @@ export default function NewOrderPage() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [endOfDayBillingEnabled, setEndOfDayBillingEnabled] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
   const [isDeliveryClient, setIsDeliveryClient] = useState(false);
+  const [pricingType, setPricingType] = useState<string | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -83,6 +84,7 @@ export default function NewOrderPage() {
             if (userRes.ok) {
               const userData = await userRes.json();
               setEndOfDayBillingEnabled(userData.user?.endOfDayBilling ?? false);
+              setPricingType(userData.user?.pricingType || null);
 
               // Auto-preencher endereço de origem para clientes delivery
               if (userData.user?.clientType === 'DELIVERY' && userData.user?.clientAddress) {
@@ -143,6 +145,7 @@ export default function NewOrderPage() {
   const getFullOriginAddress = () => originAddresses.map(a => a.address).filter(a => a.trim()).join(' | ');
   const getFullDestinationAddress = () => destinationAddresses.map(a => a.address).filter(a => a.trim()).join(' | ');
 
+
   const handleCalculatePrice = async () => {
     const validOrigins = originAddresses.filter(a => a.address.trim());
     const validDestinations = destinationAddresses.filter(a => a.address.trim());
@@ -154,6 +157,38 @@ export default function NewOrderPage() {
         variant: 'destructive',
       });
       return;
+    }
+
+    // Verificar se usuário usa taxa por bairro e validar endereço
+    if (pricingType === 'POR_BAIRRO') {
+      const { hasOnlyStreetAndNumber, extractNeighborhood } = await import('@/lib/geocoding');
+      const destinationFull = validDestinations[validDestinations.length - 1].address;
+
+      // Verificar se endereço tem apenas rua + número (sem bairro)
+      if (hasOnlyStreetAndNumber(destinationFull)) {
+        toast({
+          title: '⚠️ Bairro necessário',
+          description: 'Para usar taxa de bairro, adicione o bairro no endereço de entrega',
+          variant: 'destructive',
+        });
+
+        // Tentar auto-completar bairro
+        try {
+          const neighborhood = await extractNeighborhood(destinationFull);
+
+          if (neighborhood) {
+            toast({
+              title: '💡 Bairro encontrado',
+              description: `Sugerimos adicionar: "${neighborhood}" ao endereço`,
+              duration: 6000,
+            });
+          }
+        } catch (error) {
+          console.error('Error extracting neighborhood:', error);
+        }
+
+        return; // Não calcular sem bairro especificado
+      }
     }
 
     setIsCalculating(true);
@@ -439,7 +474,8 @@ export default function NewOrderPage() {
       </div>
 
       <div className="space-y-6">
-        {/* Camera Capture Section */}
+        {/* Camera Capture Section - DESATIVADO POR SOLICITAÇÃO */}
+        {/* 
         {showCamera ? (
           <CameraCapture
             onExtract={handleExtractedInfo}
@@ -459,6 +495,7 @@ export default function NewOrderPage() {
             <ScanText className="w-5 h-5 ml-auto" />
           </Button>
         )}
+        */}
 
         <Card>
           <CardHeader>

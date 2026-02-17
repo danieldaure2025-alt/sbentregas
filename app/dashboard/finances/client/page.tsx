@@ -35,6 +35,7 @@ interface Order {
 
 interface FinanceData {
     totalSpent: number;
+    cancelledTotal: number;
     activeOrders: number;
     completedOrders: number;
     cancelledOrders: number;
@@ -184,7 +185,7 @@ export default function ClientFinancesPage() {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="bg-card border-green-500/30">
                     <CardContent className="p-4">
                         <div className="flex items-center gap-2 text-green-400 mb-1">
@@ -220,6 +221,21 @@ export default function ClientFinancesPage() {
                         </p>
                     </CardContent>
                 </Card>
+
+                <Card className="bg-card border-red-500/30">
+                    <CardContent className="p-4">
+                        <div className="flex items-center gap-2 text-red-400 mb-1">
+                            <XCircle className="w-4 h-4" />
+                            <span className="text-xs">Cancelados</span>
+                        </div>
+                        <p className="text-xl md:text-2xl font-bold text-white">
+                            {data?.cancelledOrders || 0}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            R$ {data?.cancelledTotal?.toFixed(2) || '0,00'}
+                        </p>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Orders List */}
@@ -250,8 +266,8 @@ export default function ClientFinancesPage() {
                                                 R$ {order.transaction?.totalAmount?.toFixed(2) || order.price.toFixed(2)}
                                             </p>
                                             <span className={`text-xs px-2 py-1 rounded ${order.status === 'DELIVERED' ? 'bg-green-500/20 text-green-400' :
-                                                    order.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
-                                                        'bg-yellow-500/20 text-yellow-400'
+                                                order.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
+                                                    'bg-yellow-500/20 text-yellow-400'
                                                 }`}>
                                                 {order.status}
                                             </span>
