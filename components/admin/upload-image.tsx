@@ -7,8 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 
 interface UploadImageProps {
-  onUpload Complete: (url: string) => void;
-currentImageUrl ?: string;
+    onUploadComplete: (url: string) => void;
+    currentImageUrl?: string;
 }
 
 export function UploadImage({ onUploadComplete, currentImageUrl }: UploadImageProps) {
@@ -136,8 +136,8 @@ export function UploadImage({ onUploadComplete, currentImageUrl }: UploadImagePr
             ) : (
                 <div
                     className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${dragActive
-                            ? 'border-orange-500 bg-orange-50'
-                            : 'border-gray-300 hover:border-orange-400'
+                        ? 'border-orange-500 bg-orange-50'
+                        : 'border-gray-300 hover:border-orange-400'
                         }`}
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
