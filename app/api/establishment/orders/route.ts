@@ -99,6 +99,8 @@ export async function POST(request: NextRequest) {
         establishmentLatitude: true,
         establishmentLongitude: true,
         endOfDayBilling: true,
+        pricingType: true,
+        platformFeePercentage: true,
       },
     });
 
@@ -142,7 +144,36 @@ export async function POST(request: NextRequest) {
     }
 
     const { distance } = routeData;
-    const { price, platformFee, deliveryFee } = await calculateOrderPrice(distance);
+
+    // Extrair bairro do endereço de destino se necessário
+    let destinationNeighborhood: string | null = null;
+
+    if (establishment.pricingType === 'POR_BAIRRO') {
+      const { extractNeighborhood } = await import('@/lib/price-calculator');
+      destinationNeighborhood = await extractNeighborhood(destinationAddress);
+
+      if (!destinationNeighborhood) {
+        return NextResponse.json(
+          {
+            error: 'Não foi possível identificar o bairro do endereço de destino. Por favor, informe o endereço completo incluindo: Rua, Número, Bairro, Cidade.'
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Calcular preço baseado no tipo de precificação
+    const { price, platformFee, deliveryFee } = await calculateOrderPrice(
+      distance,
+      establishment.pricingType && establishment.platformFeePercentage !== null
+        ? {
+          id: session.user.id,
+          pricingType: establishment.pricingType as 'POR_KM' | 'POR_BAIRRO',
+          platformFeePercentage: establishment.platformFeePercentage,
+        }
+        : undefined,
+      destinationNeighborhood || undefined
+    );
 
     // Estabelecimento sempre usa pagamento no final do dia
     const paymentMethod = PaymentMethod.END_OF_DAY;

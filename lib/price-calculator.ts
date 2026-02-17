@@ -8,7 +8,7 @@ export type Coordinates = [number, number]; // [longitude, latitude]
 export async function geocodeAddress(address: string): Promise<Coordinates | null> {
   try {
     const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    
+
     if (!mapboxToken) {
       console.error('Mapbox token not configured');
       return null;
@@ -33,6 +33,56 @@ export async function geocodeAddress(address: string): Promise<Coordinates | nul
   }
 }
 
+// Extrair bairro de um endereço usando Mapbox Geocoding
+export async function extractNeighborhood(address: string): Promise<string | null> {
+  try {
+    const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+
+    if (!mapboxToken) {
+      console.error('Mapbox token not configured');
+      return null;
+    }
+
+    const encodedAddress = encodeURIComponent(address);
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${mapboxToken}&country=br&types=neighborhood,locality&limit=1&language=pt`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!response.ok || !data.features || data.features.length === 0) {
+      console.error('Could not extract neighborhood from address:', address);
+      return null;
+    }
+
+    // Procurar pelo contexto de bairro
+    const feature = data.features[0];
+
+    // Primeiro tenta pegar o neighborhood do contexto
+    const neighborhoodContext = feature.context?.find(
+      (c: any) => c.id.startsWith('neighborhood') || c.id.startsWith('locality')
+    );
+
+    if (neighborhoodContext) {
+      return neighborhoodContext.text;
+    }
+
+    // Se não encontrou no contexto, tenta pelo place_name
+    // Exemplo: "Centro, São Paulo, Brazil" -> pega "Centro"
+    const placeName = feature.place_name || feature.text;
+    if (placeName) {
+      const parts = placeName.split(',').map((p: string) => p.trim());
+      if (parts.length > 0) {
+        return parts[0]; // Primeira parte geralmente é o bairro
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error extracting neighborhood:', error);
+    return null;
+  }
+}
+
 // Calcular rota e distância usando Mapbox Directions API
 export async function calculateRouteDistance(
   origin: Coordinates,
@@ -40,7 +90,7 @@ export async function calculateRouteDistance(
 ): Promise<{ distance: number; duration: number } | null> {
   try {
     const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    
+
     if (!mapboxToken) {
       console.error('Mapbox token not configured');
       return null;
@@ -57,7 +107,7 @@ export async function calculateRouteDistance(
     }
 
     const route = data.routes[0];
-    
+
     return {
       distance: route.distance / 1000, // metros para km
       duration: route.duration / 60, // segundos para minutos
@@ -68,12 +118,44 @@ export async function calculateRouteDistance(
   }
 }
 
-export async function calculateOrderPrice(distanceKm: number): Promise<{
+export async function calculateOrderPrice(
+  distanceKm: number,
+  establishment?: {
+    id: string;
+    pricingType: 'POR_KM' | 'POR_BAIRRO';
+    platformFeePercentage: number;
+  },
+  destinationNeighborhood?: string
+): Promise<{
   price: number;
   platformFee: number;
   deliveryFee: number;
 }> {
   try {
+    // Se estabelecimento configurado para preço por bairro
+    if (establishment?.pricingType === 'POR_BAIRRO' && destinationNeighborhood) {
+      // Buscar preço configurado para este bairro
+      const pricing = await prisma.neighborhoodPricing.findFirst({
+        where: {
+          userId: establishment.id,
+          neighborhood: destinationNeighborhood,
+          isActive: true,
+        },
+      });
+
+      if (pricing) {
+        return {
+          price: pricing.price,
+          platformFee: pricing.platformFee,
+          deliveryFee: pricing.price - pricing.platformFee,
+        };
+      }
+
+      // Se bairro não configurado, lançar erro
+      throw new Error(`O bairro "${destinationNeighborhood}" não está configurado. Configure em Configurações > Preços por Bairro.`);
+    }
+
+    // Cálculo por distância (POR_KM ou fallback)
     // Try to get settings from database
     const baseFeeSetting = await prisma.systemConfig.findUnique({
       where: { key: 'BASE_FEE' },
@@ -105,6 +187,11 @@ export async function calculateOrderPrice(distanceKm: number): Promise<{
       deliveryFee: Number(deliveryFee.toFixed(2)),
     };
   } catch (error) {
+    // Se for erro de bairro não configurado, propagar
+    if (error instanceof Error && error.message.includes('não está configurado')) {
+      throw error;
+    }
+
     console.error('Error calculating price:', error);
     // Fallback to default settings
     const deliveryFee =
