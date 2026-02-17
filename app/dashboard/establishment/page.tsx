@@ -76,7 +76,13 @@ export default function EstablishmentDashboard() {
 
   useEffect(() => {
     if (status === 'loading') return;
-    if (!session?.user || session.user.role !== 'ESTABLISHMENT') {
+
+    // Allow both ESTABLISHMENT role and CLIENT with DELIVERY type
+    const isEstablishment =
+      session?.user?.role === 'ESTABLISHMENT' ||
+      (session?.user?.role === 'CLIENT' && session?.user?.clientType === 'DELIVERY');
+
+    if (!isEstablishment) {
       router.push('/dashboard');
       return;
     }

@@ -19,12 +19,22 @@ export default async function DashboardPage() {
   if (userRole === UserRole.ADMIN) {
     return <AdminDashboard />;
   } else if (userRole === UserRole.CLIENT) {
+    // Check if client is DELIVERY type (establishment)
+    const clientType = session.user.clientType;
+
+    if (clientType === 'DELIVERY') {
+      // Redirect DELIVERY clients to establishment dashboard
+      redirect('/dashboard/establishment');
+    }
+
+    // NORMAL clients use standard client dashboard
     return <ClientDashboard />;
   } else if (userRole === UserRole.DELIVERY_PERSON) {
     return <DeliveryPersonDashboard />;
   } else if (userRole === UserRole.ESTABLISHMENT) {
     return <EstablishmentDashboard />;
   }
+
 
   return <div>Perfil inválido</div>;
 }
