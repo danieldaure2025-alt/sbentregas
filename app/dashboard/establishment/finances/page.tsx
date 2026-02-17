@@ -168,11 +168,13 @@ export default function EstablishmentFinancesPage() {
 
             {/* Date Filter */}
             <DateRangeFilter
-                startDate={dateRange.start}
-                endDate={dateRange.end}
-                onStartDateChange={(date) => setDateRange({ ...dateRange, start: date })}
-                onEndDateChange={(date) => setDateRange({ ...dateRange, end: date })}
-                onClear={() => setDateRange({ start: '', end: '' })}
+                onDateChange={(range) => {
+                    setDateRange({
+                        start: range.startDate || '',
+                        end: range.endDate || '',
+                    });
+                }}
+                defaultPeriod="month"
             />
 
             {/* Statistics Cards */}
