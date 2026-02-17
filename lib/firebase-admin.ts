@@ -54,14 +54,40 @@ export async function sendPushNotification(
           link: '/dashboard/available',
         },
       },
-      data: notification.data || {},
+      data: {
+        ...notification.data,
+        priority: 'high',
+        contentAvailable: '1', // Wake app in background
+      },
       android: {
         priority: 'high',
+        ttl: 0, // Immediate delivery or discard
         notification: {
           channelId: 'high_importance_channel',
-          priority: 'high',
+          priority: 'max', // Maximum priority
           defaultSound: true,
           defaultVibrateTimings: true,
+          visibility: 'public', // Show on lockscreen
+          sticky: false,
+          eventTimestamp: Date.now(),
+          localOnly: false,
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            alert: {
+              title: notification.title,
+              body: notification.body,
+            },
+            sound: 'default',
+            badge: 1,
+            contentAvailable: true, // Wake app in background
+          },
+        },
+        headers: {
+          'apns-priority': '10', // Maximum priority
+          'apns-push-type': 'alert',
         },
       },
     };
@@ -109,14 +135,40 @@ export async function sendPushNotificationToMultiple(
           link: '/dashboard/available',
         },
       },
-      data: notification.data || {},
+      data: {
+        ...notification.data,
+        priority: 'high',
+        contentAvailable: '1', // Wake app in background
+      },
       android: {
         priority: 'high',
+        ttl: 0, // Immediate delivery or discard
         notification: {
           channelId: 'high_importance_channel',
-          priority: 'high',
+          priority: 'max', // Maximum priority
           defaultSound: true,
           defaultVibrateTimings: true,
+          visibility: 'public', // Show on lockscreen
+          sticky: false,
+          eventTimestamp: Date.now(),
+          localOnly: false,
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            alert: {
+              title: notification.title,
+              body: notification.body,
+            },
+            sound: 'default',
+            badge: 1,
+            contentAvailable: true, // Wake app in background
+          },
+        },
+        headers: {
+          'apns-priority': '10', // Maximum priority
+          'apns-push-type': 'alert',
         },
       },
     };
