@@ -86,7 +86,6 @@ export async function PATCH(req: NextRequest) {
                     platformName,
                     supportEmail,
                     supportPhone,
-                    updatedById: session.user.id,
                 },
             });
         } else {
@@ -99,7 +98,6 @@ export async function PATCH(req: NextRequest) {
                     platformName,
                     supportEmail,
                     supportPhone,
-                    updatedById: session.user.id,
                 },
             });
         }
