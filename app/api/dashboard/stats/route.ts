@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
       });
     } else if (userRole === UserRole.CLIENT) {
       // Client stats
-      const [totalOrders, activeOrders, completedOrders] = await Promise.all([
+      const [totalOrders, activeOrders, completedOrders, cancelledOrders] = await Promise.all([
         prisma.order.count({ where: { clientId: userId } }),
         prisma.order.count({
           where: {
@@ -76,6 +76,12 @@ export async function GET(req: NextRequest) {
           where: {
             clientId: userId,
             status: OrderStatus.DELIVERED,
+          },
+        }),
+        prisma.order.count({
+          where: {
+            clientId: userId,
+            status: OrderStatus.CANCELLED,
           },
         }),
       ]);
@@ -96,6 +102,7 @@ export async function GET(req: NextRequest) {
         totalOrders,
         activeOrders,
         completedOrders,
+        cancelledOrders,
         totalSpent: Number(totalSpent.toFixed(2)),
       });
     } else if (userRole === UserRole.DELIVERY_PERSON) {

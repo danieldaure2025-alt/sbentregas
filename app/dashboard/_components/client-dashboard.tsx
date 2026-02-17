@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loading } from '@/components/shared/loading';
-import { Package, DollarSign, CheckCircle, Clock, PlusCircle } from 'lucide-react';
+import { Package, DollarSign, CheckCircle, Clock, PlusCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/status-badge';
@@ -13,6 +13,7 @@ interface Stats {
   totalOrders: number;
   activeOrders: number;
   completedOrders: number;
+  cancelledOrders: number;
   totalSpent: number;
 }
 
@@ -78,7 +79,7 @@ export default function ClientDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Gasto</CardTitle>
@@ -118,6 +119,16 @@ export default function ClientDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.completedOrders ?? 0}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Cancelados</CardTitle>
+            <XCircle className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.cancelledOrders ?? 0}</div>
           </CardContent>
         </Card>
       </div>
