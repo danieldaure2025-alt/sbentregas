@@ -9,12 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, DollarSign, MapPin, Plus, Trash2, AlertCircle, Building2 } from 'lucide-react';
+import { Loader2, DollarSign, MapPin, Plus, Trash2, AlertCircle, Building2, Home, Search, Check, Percent } from 'lucide-react';
 
 interface Neighborhood {
     id: string;
     neighborhood: string;
     price: number;
+    platformFee: number;
+    platformFeePercentage?: number;
     isActive: boolean;
 }
 
@@ -28,8 +30,21 @@ export default function ClientSettingsPage() {
     const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
     const [newNeighborhood, setNewNeighborhood] = useState('');
     const [newPrice, setNewPrice] = useState('');
+    const [newPlatformFee, setNewPlatformFee] = useState('');
     const [addingNeighborhood, setAddingNeighborhood] = useState(false);
     const [clientType, setClientType] = useState<string | null>(null);
+
+    // Estados para endereço do estabelecimento
+    const [establishmentInfo, setEstablishmentInfo] = useState({
+        establishmentAddress: '',
+        establishmentNeighborhood: '',
+        establishmentCity: '',
+        establishmentState: '',
+        establishmentLatitude: null as number | null,
+        establishmentLongitude: null as number | null,
+    });
+    const [savingAddress, setSavingAddress] = useState(false);
+    const [geocoding, setGeocoding] = useState(false);
 
     useEffect(() => {
         fetchSettings();
@@ -54,6 +69,16 @@ export default function ClientSettingsPage() {
             setPricingType(settingsData.user?.pricingType || 'POR_KM');
             setFixedDeliveryFee(settingsData.user?.fixedDeliveryFee?.toString() || '');
             setNeighborhoods(neighborhoodsData.neighborhoods || []);
+
+            // Carregar endereço do estabelecimento
+            setEstablishmentInfo({
+                establishmentAddress: settingsData.user?.establishmentAddress || '',
+                establishmentNeighborhood: settingsData.user?.establishmentNeighborhood || '',
+                establishmentCity: settingsData.user?.establishmentCity || '',
+                establishmentState: settingsData.user?.establishmentState || '',
+                establishmentLatitude: settingsData.user?.establishmentLatitude,
+                establishmentLongitude: settingsData.user?.establishmentLongitude,
+            });
         } catch (error) {
             console.error('Error fetching settings:', error);
             toast({
@@ -117,6 +142,7 @@ export default function ClientSettingsPage() {
                 body: JSON.stringify({
                     neighborhood: newNeighborhood.trim(),
                     price: parseFloat(newPrice),
+                    platformFee: newPlatformFee ? parseFloat(newPlatformFee) : 0,
                 }),
             });
 
@@ -129,6 +155,7 @@ export default function ClientSettingsPage() {
             setNeighborhoods([...neighborhoods, data.neighborhood]);
             setNewNeighborhood('');
             setNewPrice('');
+            setNewPlatformFee('');
             toast({
                 title: 'Sucesso',
                 description: 'Bairro adicionado!',
@@ -196,6 +223,101 @@ export default function ClientSettingsPage() {
         }
     };
 
+    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setEstablishmentInfo((prev) => ({
+            ...prev,
+            establishmentAddress: e.target.value,
+        }));
+    };
+
+    const handleGeocodeAddress = async () => {
+        if (!establishmentInfo.establishmentAddress || establishmentInfo.establishmentAddress.trim().length < 5) {
+            toast({
+                title: 'Endereço inválido',
+                description: 'Por favor, digite um endereço completo',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        setGeocoding(true);
+        try {
+            const response = await fetch('/api/geocode/neighborhood', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address: establishmentInfo.establishmentAddress }),
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                setEstablishmentInfo((prev) => ({
+                    ...prev,
+                    establishmentNeighborhood: result.data.neighborhood || '',
+                    establishmentCity: result.data.city || '',
+                    establishmentState: result.data.state || '',
+                    establishmentLatitude: result.data.latitude,
+                    establishmentLongitude: result.data.longitude,
+                }));
+
+                toast({
+                    title: 'Sucesso!',
+                    description: 'Bairro, cidade e estado preenchidos automaticamente.',
+                });
+            } else {
+                toast({
+                    title: 'Erro',
+                    description: result.error || 'Não foi possível encontrar o endereço',
+                    variant: 'destructive',
+                });
+            }
+        } catch (error) {
+            console.error('Error geocoding address:', error);
+            toast({
+                title: 'Erro',
+                description: 'Erro ao buscar informações do endereço',
+                variant: 'destructive',
+            });
+        } finally {
+            setGeocoding(false);
+        }
+    };
+
+    const handleSaveAddress = async () => {
+        setSavingAddress(true);
+        try {
+            const response = await fetch('/api/client-settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(establishmentInfo),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                toast({
+                    title: 'Endereço Salvo',
+                    description: 'O endereço do estabelecimento foi atualizado com sucesso!',
+                });
+            } else {
+                toast({
+                    title: 'Erro',
+                    description: result.error || 'Erro ao salvar endereço',
+                    variant: 'destructive',
+                });
+            }
+        } catch (error) {
+            console.error('Error saving address:', error);
+            toast({
+                title: 'Erro',
+                description: 'Erro ao salvar endereço',
+                variant: 'destructive',
+            });
+        } finally {
+            setSavingAddress(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -235,8 +357,9 @@ export default function ClientSettingsPage() {
             </div>
 
             <Tabs defaultValue="pricing" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-1">
+                <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="pricing">Precificação</TabsTrigger>
+                    <TabsTrigger value="address">Endereço</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="pricing" className="space-y-4">
@@ -385,6 +508,14 @@ export default function ClientSettingsPage() {
                                             onChange={(e) => setNewPrice(e.target.value)}
                                             className="w-32"
                                         />
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="Tx. Plataforma (R$)"
+                                            value={newPlatformFee}
+                                            onChange={(e) => setNewPlatformFee(e.target.value)}
+                                            className="w-40"
+                                        />
                                         <Button
                                             onClick={handleAddNeighborhood}
                                             disabled={addingNeighborhood}
@@ -398,7 +529,7 @@ export default function ClientSettingsPage() {
                                         </Button>
                                     </div>
                                     <p className="text-xs text-muted-foreground">
-                                        Digite o nome do bairro e a taxa de entrega que será cobrada do cliente
+                                        Digite o bairro, taxa de entrega total (cobrada do cliente) e taxa da plataforma (retida pela plataforma)
                                     </p>
                                 </div>
 
@@ -420,7 +551,15 @@ export default function ClientSettingsPage() {
                                                     <MapPin className={`w-4 h-4 ${n.isActive ? 'text-orange-500' : 'text-muted-foreground'}`} />
                                                     <div>
                                                         <p className="font-medium">{n.neighborhood}</p>
-                                                        <p className="text-sm text-orange-500">R$ {n.price.toFixed(2)}</p>
+                                                        <div>
+                                                            <p className="text-sm text-orange-500">Taxa Total: R$ {n.price.toFixed(2)}</p>
+                                                            {n.platformFee > 0 && (
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Taxa Plataforma: R$ {n.platformFee.toFixed(2)} | 
+                                                                    Entregador: R$ {(n.price - n.platformFee).toFixed(2)}
+                                                                </p>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -444,6 +583,114 @@ export default function ClientSettingsPage() {
                             </CardContent>
                         </Card>
                     )}
+                </TabsContent>
+
+                {/* Address Tab */}
+                <TabsContent value="address" className="space-y-4">
+                    <Card className="border-orange-500/30">
+                        <CardHeader>
+                            <CardTitle className="flex items-center space-x-2">
+                                <Home className="w-5 h-5 text-orange-500" />
+                                <span>Endereço do Estabelecimento</span>
+                            </CardTitle>
+                            <CardDescription>
+                                Configure o endereço base para suas entregas. O bairro é preenchido automaticamente.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="establishmentAddress">Endereço Completo *</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="establishmentAddress"
+                                        value={establishmentInfo.establishmentAddress}
+                                        onChange={handleAddressChange}
+                                        placeholder="Ex: Rua das Flores, 123, Centro"
+                                        className="flex-1"
+                                    />
+                                    <Button
+                                        onClick={handleGeocodeAddress}
+                                        disabled={geocoding || !establishmentInfo.establishmentAddress}
+                                        size="lg"
+                                        className="bg-orange-500 hover:bg-orange-600"
+                                    >
+                                        {geocoding ? (
+                                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        ) : (
+                                            <Search className="w-4 h-4 mr-2" />
+                                        )}
+                                        {geocoding ? 'Buscando...' : 'Auto-preencher'}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Digite o endereço completo e clique em "Auto-preencher" para buscar o bairro
+                                </p>
+                            </div>
+
+                            <div className="grid md:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="establishmentNeighborhood">Bairro</Label>
+                                    <Input
+                                        id="establishmentNeighborhood"
+                                        value={establishmentInfo.establishmentNeighborhood}
+                                        readOnly
+                                        disabled
+                                        placeholder="Auto-preenchido"
+                                        className="bg-muted"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="establishmentCity">Cidade</Label>
+                                    <Input
+                                        id="establishmentCity"
+                                        value={establishmentInfo.establishmentCity}
+                                        readOnly
+                                        disabled
+                                        placeholder="Auto-preenchido"
+                                        className="bg-muted"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="establishmentState">Estado</Label>
+                                    <Input
+                                        id="establishmentState"
+                                        value={establishmentInfo.establishmentState}
+                                        readOnly
+                                        disabled
+                                        placeholder="Auto-preenchido"
+                                        className="bg-muted"
+                                    />
+                                </div>
+                            </div>
+
+                            {establishmentInfo.establishmentNeighborhood && (
+                                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-900/20 border border-green-500/30">
+                                    <Check className="w-4 h-4 text-green-400" />
+                                    <p className="text-sm text-green-400">
+                                        Bairro identificado: <strong>{establishmentInfo.establishmentNeighborhood}</strong>
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="pt-4 border-t">
+                                <Button
+                                    onClick={handleSaveAddress}
+                                    size="lg"
+                                    disabled={savingAddress || !establishmentInfo.establishmentAddress}
+                                    className="bg-orange-500 hover:bg-orange-600"
+                                >
+                                    {savingAddress ? (
+                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    ) : (
+                                        <Home className="w-4 h-4 mr-2" />
+                                    )}
+                                    {savingAddress ? 'Salvando...' : 'Salvar Endereço'}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
             </Tabs>
         </div>

@@ -437,14 +437,16 @@ model Notification {
 }
 
 model NeighborhoodPricing {
-  id           String   @id @default(cuid())
-  userId       String
-  neighborhood String
-  price        Float
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String   @id @default(cuid())
+  userId                String
+  neighborhood          String
+  price                 Float    // Taxa de entrega total cobrada do cliente
+  platformFee           Float    @default(0)  // Taxa da plataforma (valor fixo em R$)
+  platformFeePercentage Float?   // Taxa da plataforma (porcentagem opcional)
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, neighborhood])
   @@index([userId])

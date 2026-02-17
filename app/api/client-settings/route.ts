@@ -23,6 +23,11 @@ export async function GET(req: NextRequest) {
         fixedDeliveryFee: true,
         establishmentName: true,
         establishmentAddress: true,
+        establishmentNeighborhood: true,
+        establishmentCity: true,
+        establishmentState: true,
+        establishmentLatitude: true,
+        establishmentLongitude: true,
         establishmentPhone: true,
         establishmentCnpj: true,
       },
@@ -52,7 +57,16 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { pricingType, fixedDeliveryFee } = body;
+    const {
+      pricingType,
+      fixedDeliveryFee,
+      establishmentAddress,
+      establishmentNeighborhood,
+      establishmentCity,
+      establishmentState,
+      establishmentLatitude,
+      establishmentLongitude,
+    } = body;
 
     // Validar entrada
     if (pricingType && !['POR_KM', 'POR_BAIRRO'].includes(pricingType)) {
@@ -77,6 +91,12 @@ export async function PUT(req: NextRequest) {
       data: {
         pricingType: pricingType || undefined,
         fixedDeliveryFee: fixedDeliveryFee !== undefined ? parseFloat(fixedDeliveryFee) : undefined,
+        establishmentAddress: establishmentAddress !== undefined ? establishmentAddress : undefined,
+        establishmentNeighborhood: establishmentNeighborhood !== undefined ? establishmentNeighborhood : undefined,
+        establishmentCity: establishmentCity !== undefined ? establishmentCity : undefined,
+        establishmentState: establishmentState !== undefined ? establishmentState : undefined,
+        establishmentLatitude: establishmentLatitude !== undefined ? establishmentLatitude : undefined,
+        establishmentLongitude: establishmentLongitude !== undefined ? establishmentLongitude : undefined,
       },
       select: {
         id: true,

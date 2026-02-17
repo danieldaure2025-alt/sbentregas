@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { neighborhood, price } = body;
+        const { neighborhood, price, platformFee } = body;
 
         if (!neighborhood || !neighborhood.trim()) {
             return NextResponse.json(
@@ -57,6 +57,14 @@ export async function POST(req: NextRequest) {
         if (isNaN(parsedPrice) || parsedPrice < 0) {
             return NextResponse.json(
                 { error: 'Preço inválido' },
+                { status: 400 }
+            );
+        }
+
+        const parsedPlatformFee = platformFee ? parseFloat(platformFee) : 0;
+        if (isNaN(parsedPlatformFee) || parsedPlatformFee < 0) {
+            return NextResponse.json(
+                { error: 'Taxa da plataforma inválida' },
                 { status: 400 }
             );
         }
@@ -83,6 +91,7 @@ export async function POST(req: NextRequest) {
                 userId: session.user.id,
                 neighborhood: neighborhood.trim(),
                 price: parsedPrice,
+                platformFee: parsedPlatformFee,
                 isActive: true,
             },
         });
