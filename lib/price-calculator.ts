@@ -134,11 +134,17 @@ export async function calculateOrderPrice(
   try {
     // Se estabelecimento configurado para preço por bairro
     if (establishment?.pricingType === 'POR_BAIRRO' && destinationNeighborhood) {
+      // Normalizar bairro para minúsculo (case-insensitive)
+      const normalizedNeighborhood = destinationNeighborhood.toLowerCase().trim();
+
       // Buscar preço configurado para este bairro
       const pricing = await prisma.neighborhoodPricing.findFirst({
         where: {
           userId: establishment.id,
-          neighborhood: destinationNeighborhood,
+          neighborhood: {
+            equals: normalizedNeighborhood,
+            mode: 'insensitive',
+          },
           isActive: true,
         },
       });
