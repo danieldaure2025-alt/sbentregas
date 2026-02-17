@@ -1,99 +1,90 @@
-// Script para criar usuários de teste
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
-async function main() {
-    const hashedPassword = await bcrypt.hash('teste123', 10);
+async function createTestUsers() {
+    try {
+        console.log('Criando usuários de teste...\n');
 
-    console.log('Criando usuários de teste...\n');
+        const password = await bcrypt.hash('Salmo91.', 10);
 
-    // 1. Admin
-    const admin = await prisma.user.upsert({
-        where: { email: 'admin@teste.com' },
-        update: {},
-        create: {
-            email: 'admin@teste.com',
-            name: 'Administrador Teste',
-            passwordHash: hashedPassword,
-            role: 'ADMIN',
-            status: 'ACTIVE',
-        },
-    });
-    console.log('✅ Admin criado:', admin.email);
+        // Create DELIVERY_PERSON user
+        const delivery = await prisma.user.upsert({
+            where: { email: 'entregador@teste.com' },
+            update: {
+                passwordHash: password,
+                status: 'ACTIVE',
+            },
+            create: {
+                email: 'entregador@teste.com',
+                passwordHash: password,
+                name: 'Entregador Teste',
+                role: 'DELIVERY_PERSON',
+                status: 'ACTIVE',
+                phone: '(47) 98888-8888',
+            },
+        });
 
-    // 2. Cliente Normal
-    const clientNormal = await prisma.user.upsert({
-        where: { email: 'cliente@teste.com' },
-        update: {},
-        create: {
-            email: 'cliente@teste.com',
-            name: 'Cliente Normal Teste',
-            passwordHash: hashedPassword,
-            role: 'CLIENT',
-            clientType: 'NORMAL',
-            status: 'ACTIVE',
-        },
-    });
-    console.log('✅ Cliente Normal criado:', clientNormal.email);
+        console.log('✅ Entregador criado:');
+        console.log('   📧 Email: entregador@teste.com');
+        console.log('   🔑 Senha: Salmo91.');
+        console.log('   👤 Role: DELIVERY_PERSON');
+        console.log('');
 
-    // 3. Cliente DELIVERY (Estabelecimento)
-    const clientDelivery = await prisma.user.upsert({
-        where: { email: 'restaurante@teste.com' },
-        update: {
-            clientType: 'DELIVERY',
-            clientAddress: 'Rua das Flores, 123 - Centro - São Paulo/SP',
-        },
-        create: {
-            email: 'restaurante@teste.com',
-            name: 'Restaurante Teste',
-            passwordHash: hashedPassword,
-            role: 'CLIENT',
-            clientType: 'DELIVERY',
-            clientAddress: 'Rua das Flores, 123 - Centro - São Paulo/SP',
-            status: 'ACTIVE',
-        },
-    });
-    console.log('✅ Cliente DELIVERY criado:', clientDelivery.email);
-    console.log('   Endereço:', clientDelivery.clientAddress);
+        // Create CLIENT user
+        const client = await prisma.user.upsert({
+            where: { email: 'cliente@teste.com' },
+            update: {
+                passwordHash: password,
+                status: 'ACTIVE',
+            },
+            create: {
+                email: 'cliente@teste.com',
+                passwordHash: password,
+                name: 'Cliente Teste',
+                role: 'CLIENT',
+                status: 'ACTIVE',
+                phone: '(47) 97777-7777',
+            },
+        });
 
-    // 4. Entregador
-    const deliveryPerson = await prisma.user.upsert({
-        where: { email: 'entregador@teste.com' },
-        update: {
-            licenseNumber: 'ABC-1234',
-            phone: '(11) 99999-9999',
-        },
-        create: {
-            email: 'entregador@teste.com',
-            name: 'Entregador Teste',
-            passwordHash: hashedPassword,
-            role: 'DELIVERY_PERSON',
-            vehicleType: 'MOTORCYCLE',
-            licenseNumber: 'ABC-1234',
-            phone: '(11) 99999-9999',
-            deliveryStatus: 'OFFLINE',
-            status: 'ACTIVE',
-        },
-    });
-    console.log('✅ Entregador criado:', deliveryPerson.email);
-    console.log('   Placa:', deliveryPerson.licenseNumber);
+        console.log('✅ Cliente criado:');
+        console.log('   📧 Email: cliente@teste.com');
+        console.log('   🔑 Senha: Salmo91.');
+        console.log('   👤 Role: CLIENT');
+        console.log('');
 
-    console.log('\n📋 CREDENCIAIS DE TESTE (todas com senha: teste123)');
-    console.log('═══════════════════════════════════════════════════');
-    console.log('1. Admin:              admin@teste.com');
-    console.log('2. Cliente Normal:     cliente@teste.com');
-    console.log('3. Cliente DELIVERY:   restaurante@teste.com');
-    console.log('4. Entregador:         entregador@teste.com');
-    console.log('═══════════════════════════════════════════════════\n');
+        // Create ESTABLISHMENT user
+        const establishment = await prisma.user.upsert({
+            where: { email: 'estabelecimento@teste.com' },
+            update: {
+                passwordHash: password,
+                status: 'ACTIVE',
+            },
+            create: {
+                email: 'estabelecimento@teste.com',
+                passwordHash: password,
+                name: 'Estabelecimento Teste',
+                role: 'ESTABLISHMENT',
+                status: 'ACTIVE',
+                phone: '(47) 96666-6666',
+            },
+        });
+
+        console.log('✅ Estabelecimento criado:');
+        console.log('   📧 Email: estabelecimento@teste.com');
+        console.log('   🔑 Senha: Salmo91.');
+        console.log('   👤 Role: ESTABLISHMENT');
+        console.log('');
+
+        console.log('🎉 Todos os usuários de teste foram criados!');
+
+    } catch (error) {
+        console.error('❌ Erro ao criar usuários:', error.message);
+    } finally {
+        await prisma.$disconnect();
+    }
 }
 
-main()
-    .catch((e) => {
-        console.error(e);
-        process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
-    });
+createTestUsers();
