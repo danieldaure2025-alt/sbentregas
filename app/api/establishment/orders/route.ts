@@ -241,6 +241,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ order }, { status: 201 });
   } catch (error) {
     console.error('Error creating establishment order:', error);
+
+    // Retornar mensagem específica se for erro de bairro
+    if (error instanceof Error) {
+      // Erros específicos da lógica de preço por bairro
+      if (error.message.includes('não está configurado') ||
+        error.message.includes('não foi possível identificar')) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 400 }
+        );
+      }
+    }
+
     return NextResponse.json(
       { error: 'Erro ao criar pedido' },
       { status: 500 }
