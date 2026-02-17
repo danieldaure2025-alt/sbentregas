@@ -96,6 +96,7 @@ model User {
   establishmentCnpj      String?
   pricingType            PricingType?         @default(POR_KM)
   fixedDeliveryFee       Float?
+  platformFeePercentage  Float?               @default(0)  // Porcentagem da taxa de plataforma por cliente
   emailNotificationsEnabled Boolean           @default(true)  // Habilitar/desabilitar notificações por email
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
