@@ -1,24 +1,44 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Settings as SettingsIcon, DollarSign, Percent, MapPin, Loader2, Plus } from 'lucide-react';
+import { Settings as SettingsIcon, DollarSign, Percent, MapPin, Loader2, Plus, Home, Search, Check } from 'lucide-react';
 import { DEFAULT_SYSTEM_SETTINGS } from '@/lib/constants';
 
 export default function SettingsPage() {
+  const { data: session } = useSession();
   const [settings, setSettings] = useState({
     baseFee: DEFAULT_SYSTEM_SETTINGS.BASE_FEE,
     pricePerKm: DEFAULT_SYSTEM_SETTINGS.PRICE_PER_KM,
     platformFeePercentage: DEFAULT_SYSTEM_SETTINGS.PLATFORM_FEE_PERCENTAGE * 100,
     extraStopFee: DEFAULT_SYSTEM_SETTINGS.EXTRA_STOP_FEE,
   });
+
+  // Estado para endereço do estabelecimento
+  const [establishmentInfo, setEstablishmentInfo] = useState({
+    establishmentAddress: '',
+    establishmentNeighborhood: '',
+    establishmentCity: '',
+    establishmentState: '',
+    establishmentLatitude: null as number | null,
+    establishmentLongitude: null as number | null,
+  });
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const { toast } = useToast();
+
+  // Verificar se usuário é estabelecimento
+  const isEstablishment =
+    session?.user?.role === 'ESTABLISHMENT' ||
+    (session?.user?.role === 'CLIENT' && session?.user?.clientType === 'DELIVERY');
 
   // Carregar configurações do banco de dados
   useEffect(() => {
@@ -30,8 +50,8 @@ export default function SettingsPage() {
           setSettings({
             baseFee: data.BASE_FEE ? parseFloat(data.BASE_FEE) : DEFAULT_SYSTEM_SETTINGS.BASE_FEE,
             pricePerKm: data.PRICE_PER_KM ? parseFloat(data.PRICE_PER_KM) : DEFAULT_SYSTEM_SETTINGS.PRICE_PER_KM,
-            platformFeePercentage: data.PLATFORM_FEE_PERCENTAGE 
-              ? parseFloat(data.PLATFORM_FEE_PERCENTAGE) * 100 
+            platformFeePercentage: data.PLATFORM_FEE_PERCENTAGE
+              ? parseFloat(data.PLATFORM_FEE_PERCENTAGE) * 100
               : DEFAULT_SYSTEM_SETTINGS.PLATFORM_FEE_PERCENTAGE * 100,
             extraStopFee: data.EXTRA_STOP_FEE ? parseFloat(data.EXTRA_STOP_FEE) : DEFAULT_SYSTEM_SETTINGS.EXTRA_STOP_FEE,
           });
@@ -45,11 +65,131 @@ export default function SettingsPage() {
     fetchSettings();
   }, []);
 
+  // Carregar informações do estabelecimento
+  useEffect(() => {
+    if (!isEstablishment) return;
+
+    const fetchEstablishmentInfo = async () => {
+      try {
+        const response = await fetch('/api/establishment/info');
+        if (response.ok) {
+          const { data } = await response.json();
+          setEstablishmentInfo({
+            establishmentAddress: data.establishmentAddress || '',
+            establishmentNeighborhood: data.establishmentNeighborhood || '',
+            establishmentCity: data.establishmentCity || '',
+            establishmentState: data.establishmentState || '',
+            establishmentLatitude: data.establishmentLatitude,
+            establishmentLongitude: data.establishmentLongitude,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching establishment info:', error);
+      }
+    };
+    fetchEstablishmentInfo();
+  }, [isEstablishment]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSettings((prev) => ({
       ...prev,
       [e.target.name]: parseFloat(e.target.value) || 0,
     }));
+  };
+
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEstablishmentInfo((prev) => ({
+      ...prev,
+      establishmentAddress: e.target.value,
+    }));
+  };
+
+  const handleGeocodeAddress = async () => {
+    if (!establishmentInfo.establishmentAddress || establishmentInfo.establishmentAddress.trim().length < 5) {
+      toast({
+        title: 'Endereço inválido',
+        description: 'Por favor, digite um endereço completo',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setGeocoding(true);
+    try {
+      const response = await fetch('/api/geocode/neighborhood', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: establishmentInfo.establishmentAddress }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setEstablishmentInfo((prev) => ({
+          ...prev,
+          establishmentNeighborhood: result.data.neighborhood || '',
+          establishmentCity: result.data.city || '',
+          establishmentState: result.data.state || '',
+          establishmentLatitude: result.data.latitude,
+          establishmentLongitude: result.data.longitude,
+        }));
+
+        toast({
+          title: 'Sucesso!',
+          description: 'Bairro, cidade e estado preenchidos automaticamente.',
+        });
+      } else {
+        toast({
+          title: 'Erro',
+          description: result.error || 'Não foi possível encontrar o endereço',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error geocoding address:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao buscar informações do endereço',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
+  const handleSaveAddress = async () => {
+    setSavingAddress(true);
+    try {
+      const response = await fetch('/api/establishment/info', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(establishmentInfo),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: 'Endereço Salvo',
+          description: 'O endereço do estabelecimento foi atualizado com sucesso!',
+        });
+      } else {
+        toast({
+          title: 'Erro',
+          description: result.error || 'Erro ao salvar endereço',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error saving address:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao salvar endereço',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingAddress(false);
+    }
   };
 
   const handleSave = async () => {
@@ -109,6 +249,114 @@ export default function SettingsPage() {
           Configure taxas, comissões e parâmetros da plataforma
         </p>
       </div>
+
+      {/* Seção de Endereço do Estabelecimento - SOMENTE para estabelecimentos */}
+      {isEstablishment && (
+        <Card className="border-orange-500/30">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Home className="w-5 h-5 text-orange-500" />
+              <span>Endereço do Estabelecimento</span>
+            </CardTitle>
+            <CardDescription>
+              Configure o endereço base para suas entregas. O bairro é preenchido automaticamente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="establishmentAddress">Endereço Completo *</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="establishmentAddress"
+                  value={establishmentInfo.establishmentAddress}
+                  onChange={handleAddressChange}
+                  placeholder="Ex: Rua das Flores, 123, Centro"
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleGeocodeAddress}
+                  disabled={geocoding || !establishmentInfo.establishmentAddress}
+                  size="lg"
+                  className="bg-orange-500 hover:bg-orange-600"
+                >
+                  {geocoding ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                  {geocoding ? 'Buscando...' : 'Auto-preencher'}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Digite o endereço completo e clique em "Auto-preencher" para buscar o bairro
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="establishmentNeighborhood">Bairro</Label>
+                <Input
+                  id="establishmentNeighborhood"
+                  value={establishmentInfo.establishmentNeighborhood}
+                  readOnly
+                  disabled
+                  placeholder="Auto-preenchido"
+                  className="bg-muted"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="establishmentCity">Cidade</Label>
+                <Input
+                  id="establishmentCity"
+                  value={establishmentInfo.establishmentCity}
+                  readOnly
+                  disabled
+                  placeholder="Auto-preenchido"
+                  className="bg-muted"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="establishmentState">Estado</Label>
+                <Input
+                  id="establishmentState"
+                  value={establishmentInfo.establishmentState}
+                  readOnly
+                  disabled
+                  placeholder="Auto-preenchido"
+                  className="bg-muted"
+                />
+              </div>
+            </div>
+
+            {establishmentInfo.establishmentNeighborhood && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-green-900/20 border border-green-500/30">
+                <Check className="w-4 h-4 text-green-400" />
+                <p className="text-sm text-green-400">
+                  Bairro identificado: <strong>{establishmentInfo.establishmentNeighborhood}</strong>
+                </p>
+              </div>
+            )}
+
+            <div className="pt-4 border-t">
+              <Button
+                onClick={handleSaveAddress}
+                size="lg"
+                disabled={savingAddress || !establishmentInfo.establishmentAddress}
+                className="bg-orange-500 hover:bg-orange-600"
+              >
+                {savingAddress ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Home className="w-4 h-4 mr-2" />
+                )}
+                {savingAddress ? 'Salvando...' : 'Salvar Endereço'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -273,6 +521,11 @@ export default function SettingsPage() {
           <p>
             • Alterações afetam apenas novos pedidos criados após salvar
           </p>
+          {isEstablishment && (
+            <p className="text-orange-400">
+              • O bairro cadastrado será usado futuramente para precificação por região
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

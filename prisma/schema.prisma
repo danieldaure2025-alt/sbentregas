@@ -87,6 +87,9 @@ model User {
   clientLongitude        Float?
   establishmentName      String?
   establishmentAddress   String?
+  establishmentNeighborhood String?  // Bairro do estabelecimento (auto-preenchido)
+  establishmentCity      String?     // Cidade do estabelecimento
+  establishmentState     String?     // Estado do estabelecimento
   establishmentLatitude  Float?
   establishmentLongitude Float?
   establishmentPhone     String?
