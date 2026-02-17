@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
       pending: orders.filter(o => o.status === 'PENDING').length,
       inProgress: orders.filter(o => ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(o.status)).length,
       delivered: orders.filter(o => o.status === 'DELIVERED').length,
+      cancelled: orders.filter(o => o.status === 'CANCELLED').length,
       totalRevenue: orders
         .filter(o => o.status === 'DELIVERED')
         .reduce((sum, o) => sum + o.price, 0),

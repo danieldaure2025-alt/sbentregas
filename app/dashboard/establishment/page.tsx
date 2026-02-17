@@ -23,6 +23,7 @@ import {
   Loader2,
   Store,
   FileText,
+  XCircle,
 } from 'lucide-react';
 
 interface Order {
@@ -42,6 +43,7 @@ interface Stats {
   pending: number;
   inProgress: number;
   delivered: number;
+  cancelled: number;
   totalRevenue: number;
 }
 
@@ -210,6 +212,17 @@ export default function EstablishmentDashboard() {
                   <p className="text-2xl font-bold text-green-500">{stats.delivered}</p>
                 </div>
                 <Package className="w-8 h-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-card border-gray-700">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-400">Cancelados</p>
+                  <p className="text-2xl font-bold text-red-500">{stats.cancelled}</p>
+                </div>
+                <XCircle className="w-8 h-8 text-red-500" />
               </div>
             </CardContent>
           </Card>
