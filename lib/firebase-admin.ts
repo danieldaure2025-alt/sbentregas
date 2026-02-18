@@ -4,7 +4,7 @@ import admin from 'firebase-admin';
 function getFirebaseAdmin() {
   if (admin.apps.length === 0) {
     const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-    
+
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
@@ -22,6 +22,7 @@ export interface PushNotificationData {
   icon?: string;
   data?: Record<string, string>;
   sound?: string;
+  channelId?: string; // Android notification channel
 }
 
 /**
@@ -58,10 +59,11 @@ export async function sendPushNotification(
       android: {
         priority: 'high',
         notification: {
-          channelId: 'high_importance_channel',
+          channelId: notification.channelId || 'high_importance_channel',
           priority: 'high',
           defaultSound: true,
           defaultVibrateTimings: true,
+          ...(notification.data?.imageUrl && { imageUrl: notification.data.imageUrl }),
         },
       },
     };
@@ -113,16 +115,17 @@ export async function sendPushNotificationToMultiple(
       android: {
         priority: 'high',
         notification: {
-          channelId: 'high_importance_channel',
+          channelId: notification.channelId || 'high_importance_channel',
           priority: 'high',
           defaultSound: true,
           defaultVibrateTimings: true,
+          ...(notification.data?.imageUrl && { imageUrl: notification.data.imageUrl }),
         },
       },
     };
 
     const response = await messaging.sendEachForMulticast(message);
-    
+
     const errors: string[] = [];
     response.responses.forEach((resp, idx) => {
       if (!resp.success && resp.error) {
@@ -131,7 +134,7 @@ export async function sendPushNotificationToMultiple(
     });
 
     console.log(`Push notifications sent: ${response.successCount} success, ${response.failureCount} failures`);
-    
+
     return {
       successCount: response.successCount,
       failureCount: response.failureCount,

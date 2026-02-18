@@ -114,6 +114,28 @@ enum NotificationType {
   CHAT_MESSAGE
   ADMIN_NOTICE
   DAILY_REPORT
+  PROMOTIONAL
+}
+
+enum NotificationCategory {
+  INFORMATIVA
+  PROMOCIONAL
+  URGENTE
+}
+
+enum LinkType {
+  URL
+  WEBVIEW
+  WHATSAPP
+  INTERNAL
+  PROMOTION
+}
+
+enum TargetAudience {
+  ALL
+  CLIENTS
+  DELIVERY_PERSONS
+  ESTABLISHMENTS
 }
 
 model Account {
@@ -592,28 +614,75 @@ model DailyReport {
 
 // Notificações do sistema
 model Notification {
-  id          String           @id @default(cuid())
-  userId      String
+  id             String               @id @default(cuid())
+  userId         String
   
-  type        NotificationType
-  title       String
-  body        String           @db.Text
-  data        String?          @db.Text // JSON data adicional
+  type           NotificationType
+  title          String
+  body           String               @db.Text
+  data           String?              @db.Text // JSON data adicional
   
-  isRead      Boolean          @default(false)
-  readAt      DateTime?
+  // Campos estendidos
+  imageUrl       String?              // URL da imagem
+  linkUrl        String?              // URL do link/ação
+  linkType       LinkType?            // Tipo de link
+  category       NotificationCategory @default(INFORMATIVA)
+  expiresAt      DateTime?            // Data de expiração
+  targetAudience TargetAudience       @default(ALL)
+  
+  isRead         Boolean              @default(false)
+  readAt         DateTime?
+  
+  // Click tracking
+  clickedAt      DateTime?
   
   // FCM tracking
-  fcmSent     Boolean          @default(false)
-  fcmSentAt   DateTime?
-  fcmError    String?
+  fcmSent        Boolean              @default(false)
+  fcmSentAt      DateTime?
+  fcmError       String?
   
-  createdAt   DateTime         @default(now())
+  createdAt      DateTime             @default(now())
   
-  user        User             @relation(fields: [userId], references: [id])
+  user           User                 @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([type])
   @@index([isRead])
   @@index([createdAt])
+  @@index([category])
+  @@index([targetAudience])
+  @@index([expiresAt])
+}
+
+// Anúncios e promoções
+model Announcement {
+  id             String          @id @default(cuid())
+  title          String
+  message        String          @db.Text
+  imageUrl       String?
+  targetAudience TargetAudience  @default(ALL)
+  
+  // Link/ação
+  linkUrl        String?
+  linkType       LinkType?
+  
+  // Classificação
+  type           NotificationCategory @default(INFORMATIVA)
+  isImportant    Boolean         @default(false)
+  
+  // Estado
+  isActive       Boolean         @default(true)
+  expiresAt      DateTime?
+  
+  // Tracking
+  sentAt         DateTime        @default(now())
+  createdBy      String?
+  
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([isActive])
+  @@index([targetAudience])
+  @@index([sentAt])
+  @@index([expiresAt])
 }
