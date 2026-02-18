@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import crypto from 'crypto';
 
+// Force dynamic rendering - prevent static optimization
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // POST - Solicitar recuperação de senha via CPF/CNPJ
 export async function POST(request: NextRequest) {
   try {

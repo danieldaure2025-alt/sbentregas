@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
+// Force dynamic rendering - prevent static optimization
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // POST - Redefinir senha com token
 export async function POST(request: NextRequest) {
   try {
