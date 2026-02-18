@@ -1,0 +1,619 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  ADMIN
+  CLIENT
+  DELIVERY_PERSON
+  ESTABLISHMENT
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING_APPROVAL
+  BLOCKED
+}
+
+enum OrderStatus {
+  AWAITING_PAYMENT
+  PENDING
+  ACCEPTED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+  NO_COURIER_AVAILABLE
+}
+
+enum OfferFailureReason {
+  TIMEOUT
+  REJECTED
+  SYSTEM_ERROR
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  PIX
+  DEBIT_CARD
+  CASH
+  END_OF_DAY
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  COMPLETED
+  REJECTED
+}
+
+enum WithdrawalMethod {
+  PIX
+  TED
+}
+
+enum DeliveryPersonStatus {
+  OFFLINE
+  ONLINE
+  EM_ROTA_COLETA
+  EM_ROTA_ENTREGA
+  EM_EMERGENCIA
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum EventType {
+  STATUS_CHANGE
+  LOCATION_UPDATE
+  ORDER_OFFER
+  ORDER_ACCEPT
+  ORDER_REJECT
+  CHEGADA_COLETA
+  SAIDA_COLETA
+  CHEGADA_ENTREGA
+  ENTREGA_FINALIZADA
+  PANICO_ACIONADO
+  PANICO_RESOLVIDO
+  GPS_FALSO_DETECTADO
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+}
+
+enum NotificationType {
+  NEW_ORDER
+  ORDER_ACCEPTED
+  ORDER_REJECTED
+  ORDER_PICKED_UP
+  ORDER_DELIVERED
+  ORDER_CANCELLED
+  NO_DRIVER_AVAILABLE
+  EMERGENCY
+  DELIVERY_PROBLEM
+  CHAT_MESSAGE
+  ADMIN_NOTICE
+  DAILY_REPORT
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model User {
+  id            String     @id @default(cuid())
+  name          String?
+  email         String     @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  role          UserRole   @default(CLIENT)
+  status        UserStatus @default(ACTIVE)
+  phone         String?
+  googleId      String?    @unique
+  
+  // Documento de identificação (CPF para pessoa física, CNPJ para estabelecimento)
+  documentType  String?    // CPF ou CNPJ
+  documentNumber String?   // Número do documento
+  
+  // Password reset
+  passwordResetToken   String?
+  passwordResetExpires DateTime?
+  
+  // Delivery person specific fields
+  vehicleType   String?
+  licenseNumber String?
+  rating        Float?     @default(0)
+  totalDeliveries Int?     @default(0)
+  
+  // PIX data
+  pixKeyType    String?    // CPF, CNPJ, EMAIL, PHONE, RANDOM
+  pixKey        String?
+  
+  // TED data
+  bankCode      String?
+  bankName      String?
+  agencyNumber  String?
+  accountNumber String?
+  accountType   String?    // CORRENTE, POUPANCA
+  accountHolder String?
+  cpfCnpj       String?
+  
+  // Geolocation (delivery person)
+  currentLatitude   Float?
+  currentLongitude  Float?
+  lastLocationUpdate DateTime?
+  
+  // Online status (delivery person)
+  isOnline          Boolean   @default(false)
+  lastOnlineAt      DateTime?
+  
+  // Advanced delivery person status
+  deliveryStatus    DeliveryPersonStatus @default(OFFLINE)
+  activeOrderId     String?   // Current order being handled
+  priorityScore     Int       @default(100) // Lower = higher priority, decreases with rejections
+  rejectionsToday   Int       @default(0)
+  lastRejectionsReset DateTime?
+  
+  // Push notifications (FCM)
+  fcmToken          String?   // Firebase Cloud Messaging token
+  fcmTokenUpdatedAt DateTime?
+  
+  // End of day billing (client/establishment)
+  endOfDayBilling   Boolean   @default(false)
+  
+  // Establishment specific fields
+  establishmentName     String?
+  establishmentAddress  String?
+  establishmentLatitude Float?
+  establishmentLongitude Float?
+  establishmentPhone    String?
+  establishmentCnpj     String?
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  
+  // Relations
+  ordersAsClient          Order[]       @relation("ClientOrders")
+  ordersAsDeliveryPerson  Order[]       @relation("DeliveryPersonOrders")
+  ordersAsEstablishment   Order[]       @relation("EstablishmentOrders")
+  ratingsGiven            Rating[]      @relation("ClientRatings")
+  ratingsReceived         Rating[]      @relation("DeliveryPersonRatings")
+  auditLogs               AuditLog[]
+  withdrawals             Withdrawal[]
+  orderOffers             OrderOffer[]
+  locationLogs            LocationLog[]
+  eventLogs               EventLog[]
+  emergencyAlerts         EmergencyAlert[]
+  messagesSent            Message[]     @relation("SenderMessages")
+  chatParticipations      ChatParticipant[]
+  dailyReports            DailyReport[]
+  notifications           Notification[]
+
+  @@index([email])
+  @@index([deliveryStatus])
+  @@index([role])
+  @@index([status])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Order {
+  id                  String      @id @default(cuid())
+  clientId            String
+  deliveryPersonId    String?
+  establishmentId     String?     // Pedido de estabelecimento
+  
+  originAddress       String
+  originLatitude      Float?
+  originLongitude     Float?
+  destinationAddress  String
+  destinationLatitude Float?
+  destinationLongitude Float?
+  notes               String?     @db.Text
+  
+  // Foto obrigatória (fachada, portaria, ponto de referência)
+  deliveryPhotoUrl    String?     // URL da foto no S3
+  deliveryPhotoKey    String?     // cloud_storage_path
+  clientPhone         String?     // Telefone do cliente
+  
+  status              OrderStatus @default(AWAITING_PAYMENT)
+  price               Float
+  distance            Float       // in kilometers
+  paymentMethod       PaymentMethod?
+  
+  // Stripe Payment Intent
+  paymentIntentId     String?     @unique
+  
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  acceptedAt          DateTime?
+  pickedUpAt          DateTime?
+  inTransitAt         DateTime?
+  completedAt         DateTime?
+  cancelledAt         DateTime?
+  
+  client              User        @relation("ClientOrders", fields: [clientId], references: [id])
+  deliveryPerson      User?       @relation("DeliveryPersonOrders", fields: [deliveryPersonId], references: [id])
+  establishment       User?       @relation("EstablishmentOrders", fields: [establishmentId], references: [id])
+  
+  transactions        Transaction[]
+  rating              Rating?
+  auditLogs           AuditLog[]
+  orderOffers         OrderOffer[]
+  locationLogs        LocationLog[]
+  eventLogs           EventLog[]
+  chat                Chat?
+
+  @@index([clientId])
+  @@index([deliveryPersonId])
+  @@index([establishmentId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Transaction {
+  id              String        @id @default(cuid())
+  orderId         String
+  
+  totalAmount     Float
+  platformFee     Float
+  deliveryFee     Float
+  
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentMethod   PaymentMethod
+  
+  stripePaymentId String?       // For future Stripe integration
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  order           Order         @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([paymentStatus])
+}
+
+model Rating {
+  id                String   @id @default(cuid())
+  orderId           String   @unique
+  clientId          String
+  deliveryPersonId  String
+  
+  rating            Int      // 1-5
+  comment           String?  @db.Text
+  
+  createdAt         DateTime @default(now())
+  
+  order             Order    @relation(fields: [orderId], references: [id])
+  client            User     @relation("ClientRatings", fields: [clientId], references: [id])
+  deliveryPerson    User     @relation("DeliveryPersonRatings", fields: [deliveryPersonId], references: [id])
+
+  @@index([deliveryPersonId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  orderId     String?
+  action      String
+  details     String?  @db.Text
+  ipAddress   String?
+  userAgent   String?  @db.Text
+  
+  createdAt   DateTime @default(now())
+  
+  user        User?    @relation(fields: [userId], references: [id])
+  order       Order?   @relation(fields: [orderId], references: [id])
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+  
+  @@index([key])
+}
+
+model Withdrawal {
+  id              String           @id @default(cuid())
+  userId          String
+  amount          Float
+  method          WithdrawalMethod
+  status          WithdrawalStatus @default(PENDING)
+  
+  // PIX data (snapshot at withdrawal time)
+  pixKeyType      String?
+  pixKey          String?
+  
+  // TED data (snapshot at withdrawal time)
+  bankCode        String?
+  bankName        String?
+  agencyNumber    String?
+  accountNumber   String?
+  accountType     String?
+  accountHolder   String?
+  cpfCnpj         String?
+  
+  adminNotes      String?          @db.Text
+  processedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  user            User             @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Ofertas de pedido com timeout de 60 segundos
+model OrderOffer {
+  id                  String              @id @default(cuid())
+  orderId             String
+  deliveryPersonId    String
+  attemptNumber       Int                 @default(1) // Número da tentativa (1, 2, 3...)
+  
+  status              OfferStatus         @default(PENDING)
+  failureReason       OfferFailureReason? // Motivo da falha (TIMEOUT ou REJECTED)
+  distanceToPickup    Float               // Distância até o ponto de coleta em km
+  
+  offeredAt           DateTime            @default(now())
+  expiresAt           DateTime            // offeredAt + 60 segundos
+  respondedAt         DateTime?
+  
+  order               Order               @relation(fields: [orderId], references: [id])
+  deliveryPerson      User                @relation(fields: [deliveryPersonId], references: [id])
+
+  @@index([orderId])
+  @@index([deliveryPersonId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([attemptNumber])
+}
+
+// Histórico de localização para rastreamento
+model LocationLog {
+  id                  String   @id @default(cuid())
+  userId              String
+  orderId             String?  // Null se ONLINE sem pedido
+  
+  latitude            Float
+  longitude           Float
+  accuracy            Float?   // Precisão em metros
+  speed               Float?   // Velocidade em m/s
+  heading             Float?   // Direção em graus
+  
+  isFakeGps           Boolean  @default(false)
+  
+  createdAt           DateTime @default(now())
+  
+  user                User     @relation(fields: [userId], references: [id])
+  order               Order?   @relation(fields: [orderId], references: [id])
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+// Log de eventos do sistema
+model EventLog {
+  id                  String    @id @default(cuid())
+  userId              String
+  orderId             String?
+  
+  eventType           EventType
+  details             String?   @db.Text
+  
+  latitude            Float?
+  longitude           Float?
+  accuracy            Float?
+  
+  createdAt           DateTime  @default(now())
+  
+  user                User      @relation(fields: [userId], references: [id])
+  order               Order?    @relation(fields: [orderId], references: [id])
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+// Alertas de emergência/pânico
+model EmergencyAlert {
+  id                  String   @id @default(cuid())
+  userId              String
+  
+  reason              String?  @db.Text
+  latitude            Float
+  longitude           Float
+  
+  isResolved          Boolean  @default(false)
+  resolvedAt          DateTime?
+  resolvedBy          String?
+  resolutionNotes     String?  @db.Text
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  user                User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isResolved])
+  @@index([createdAt])
+}
+
+// Chat para comunicação em tempo real
+model Chat {
+  id          String   @id @default(cuid())
+  orderId     String   @unique
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  participants ChatParticipant[]
+  messages    Message[]
+
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+model ChatParticipant {
+  id        String   @id @default(cuid())
+  chatId    String
+  userId    String
+  
+  joinedAt  DateTime @default(now())
+  lastReadAt DateTime?
+  
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([chatId, userId])
+  @@index([chatId])
+  @@index([userId])
+}
+
+model Message {
+  id          String      @id @default(cuid())
+  chatId      String
+  senderId    String
+  
+  type        MessageType @default(TEXT)
+  content     String      @db.Text
+  imageUrl    String?     // URL da imagem se type = IMAGE
+  imageKey    String?     // cloud_storage_path
+  
+  isRead      Boolean     @default(false)
+  readAt      DateTime?
+  
+  createdAt   DateTime    @default(now())
+  
+  chat        Chat        @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender      User        @relation("SenderMessages", fields: [senderId], references: [id])
+
+  @@index([chatId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+// Relatório diário automático para estabelecimentos
+model DailyReport {
+  id                String   @id @default(cuid())
+  userId            String   // Establishment ID
+  
+  reportDate        DateTime @db.Date
+  totalOrders       Int      @default(0)
+  totalRevenue      Float    @default(0)
+  platformFees      Float    @default(0)
+  deliveryFees      Float    @default(0)
+  netAmount         Float    @default(0) // totalRevenue - platformFees
+  
+  orderIds          String[] // IDs dos pedidos incluídos
+  
+  isPaid            Boolean  @default(false)
+  paidAt            DateTime?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  user              User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, reportDate])
+  @@index([userId])
+  @@index([reportDate])
+  @@index([isPaid])
+}
+
+// Notificações do sistema
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  
+  type        NotificationType
+  title       String
+  body        String           @db.Text
+  data        String?          @db.Text // JSON data adicional
+  
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
+  
+  // FCM tracking
+  fcmSent     Boolean          @default(false)
+  fcmSentAt   DateTime?
+  fcmError    String?
+  
+  createdAt   DateTime         @default(now())
+  
+  user        User             @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+}
