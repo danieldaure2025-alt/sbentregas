@@ -1,30 +1,30 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { USER_ROLE_LABELS } from '@/lib/constants';
+import { UserRole } from '@prisma/client';
+import {
+  AlertTriangle,
+  Bike,
+  DollarSign,
+  History,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Package,
+  PlusCircle,
+  Settings,
+  ShoppingCart,
+  TruckIcon,
+  Users,
+  Wallet,
+  X
+} from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import {
-  LayoutDashboard,
-  ShoppingCart,
-  Users,
-  Settings,
-  LogOut,
-  TruckIcon,
-  History,
-  PlusCircle,
-  Menu,
-  X,
-  Wallet,
-  DollarSign,
-  Package,
-  Bike,
-  AlertTriangle,
-} from 'lucide-react';
-import { UserRole } from '@prisma/client';
-import { USER_ROLE_LABELS } from '@/lib/constants';
 import { NotificationBadge } from './notification-badge';
 
 export function Navbar() {
@@ -52,6 +52,7 @@ export function Navbar() {
         { href: '/dashboard/emergencies', label: 'Emergências', icon: AlertTriangle },
         { href: '/dashboard/deliveries', label: 'Entregas', icon: Package },
         { href: '/dashboard/delivery-persons', label: 'Motoboys', icon: Bike },
+        { href: '/dashboard/communications', label: 'Comunicados', icon: Megaphone },
         { href: '/dashboard/finances/admin', label: 'Finanças', icon: DollarSign },
         { href: '/dashboard/users', label: 'Usuários', icon: Users },
         { href: '/dashboard/settings', label: 'Configurações', icon: Settings },
@@ -119,11 +120,10 @@ export function Navbar() {
                     <Button
                       variant={isActive ? 'default' : 'ghost'}
                       size="sm"
-                      className={`flex items-center space-x-2 ${
-                        isActive
-                          ? 'bg-orange-500 text-white hover:bg-orange-600'
-                          : 'text-gray-300 hover:text-white hover:bg-white/10'
-                      }`}
+                      className={`flex items-center space-x-2 ${isActive
+                        ? 'bg-orange-500 text-white hover:bg-orange-600'
+                        : 'text-gray-300 hover:text-white hover:bg-white/10'
+                        }`}
                     >
                       <Icon className="w-4 h-4" />
                       <span>{link.label}</span>
@@ -137,7 +137,7 @@ export function Navbar() {
           <div className="flex items-center space-x-4">
             {/* Notification Badge */}
             <NotificationBadge />
-            
+
             <div className="hidden sm:block text-sm text-right">
               <p className="font-medium text-white">{session?.user?.name}</p>
               <p className="text-xs text-orange-400">
@@ -178,11 +178,10 @@ export function Navbar() {
                     <Button
                       variant={isActive ? 'default' : 'ghost'}
                       size="sm"
-                      className={`w-full justify-start ${
-                        isActive
-                          ? 'bg-orange-500 text-white'
-                          : 'text-gray-300 hover:text-white hover:bg-white/10'
-                      }`}
+                      className={`w-full justify-start ${isActive
+                        ? 'bg-orange-500 text-white'
+                        : 'text-gray-300 hover:text-white hover:bg-white/10'
+                        }`}
                     >
                       <Icon className="w-4 h-4 mr-2" />
                       <span>{link.label}</span>
