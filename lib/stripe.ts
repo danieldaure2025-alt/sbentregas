@@ -2,6 +2,10 @@ import Stripe from 'stripe';
 
 let _stripe: Stripe | null = null;
 
+export function isStripeEnabled(): boolean {
+  return !!process.env.STRIPE_SECRET_KEY;
+}
+
 function getStripe(): Stripe {
   if (!_stripe) {
     if (!process.env.STRIPE_SECRET_KEY) {
