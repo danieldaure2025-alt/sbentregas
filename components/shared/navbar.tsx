@@ -29,7 +29,11 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { NotificationBadge } from './notification-badge';
 
-export function Navbar() {
+interface NavbarProps {
+  variant?: 'topbar' | 'minimal';
+}
+
+export function Navbar({ variant = 'topbar' }: NavbarProps) {
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: session } = useSession() || {};
@@ -91,6 +95,28 @@ export function Navbar() {
     await signOut({ callbackUrl: '/auth/login' });
   };
 
+  // Minimal variant: only notification badge + user info (used alongside sidebar)
+  if (variant === 'minimal') {
+    return (
+      <nav className="sticky top-0 z-40 border-b border-orange-500/20 bg-[hsl(220,20%,10%)]/95 backdrop-blur-md">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-end h-14">
+            <div className="flex items-center space-x-4">
+              <NotificationBadge />
+              <div className="hidden sm:block text-sm text-right">
+                <p className="font-medium text-white">{session?.user?.name}</p>
+                <p className="text-xs text-orange-400">
+                  {USER_ROLE_LABELS[userRole as UserRole]}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  // Full topbar variant (default)
   return (
     <nav className="sticky top-0 z-50 border-b border-orange-500/20 bg-[hsl(220,20%,10%)]/95 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
