@@ -14,6 +14,7 @@ import {
     Image as ImageIcon,
     Link as LinkIcon,
     Loader2,
+    MessageSquare,
     Package,
     Plus,
     RefreshCw,
