@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Mail, Lock, Loader2 } from 'lucide-react';
 import { WhatsAppButton } from '@/components/shared/whatsapp-button';
+import { LogoCarousel } from '@/components/shared/logo-carousel';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -98,6 +99,12 @@ export default function LoginPage() {
           </CardTitle>
           <CardDescription className="text-gray-400">Entre na sua conta para continuar</CardDescription>
         </CardHeader>
+
+        {/* Carrossel de logos/parceiros */}
+        <div className="px-6 pb-2">
+          <LogoCarousel />
+        </div>
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -119,8 +126,8 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className="text-gray-300">Senha</Label>
-                <Link 
-                  href="/auth/forgot-password" 
+                <Link
+                  href="/auth/forgot-password"
                   className="text-xs text-orange-500 hover:text-orange-400 hover:underline"
                 >
                   Esqueci minha senha
@@ -140,9 +147,9 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-            <Button 
-              type="submit" 
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" 
+            <Button
+              type="submit"
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold"
               disabled={isLoading || isGoogleLoading}
             >
               {isLoading ? (

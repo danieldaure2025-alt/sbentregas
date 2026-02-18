@@ -714,3 +714,18 @@ model RouteGroup {
   @@index([status])
   @@index([createdAt])
 }
+
+// Imagens do carrossel na tela de login
+model CarouselImage {
+  id            String   @id @default(cuid())
+  title         String?
+  imageUrl      String   // URL pública da imagem no S3
+  imageKey      String   // cloud_storage_path no S3 para deletar
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
