@@ -1,14 +1,22 @@
 import Stripe from 'stripe';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not defined');
+let _stripe: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not defined');
+    }
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      // @ts-ignore - Using latest API version
+      apiVersion: '2025-01-27.acacia',
+      typescript: true,
+    });
+  }
+  return _stripe;
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  // @ts-ignore - Using latest API version
-  apiVersion: '2025-01-27.acacia',
-  typescript: true,
-});
+export { getStripe as stripe };
 
 export async function createPaymentIntent({
   amount,
@@ -19,7 +27,7 @@ export async function createPaymentIntent({
   currency?: string;
   metadata?: Record<string, string>;
 }) {
-  const paymentIntent = await stripe.paymentIntents.create({
+  const paymentIntent = await getStripe().paymentIntents.create({
     amount: Math.round(amount * 100), // Convert to cents
     currency,
     metadata,
@@ -30,9 +38,9 @@ export async function createPaymentIntent({
 }
 
 export async function retrievePaymentIntent(paymentIntentId: string) {
-  return stripe.paymentIntents.retrieve(paymentIntentId);
+  return getStripe().paymentIntents.retrieve(paymentIntentId);
 }
 
 export async function cancelPaymentIntent(paymentIntentId: string) {
-  return stripe.paymentIntents.cancel(paymentIntentId);
+  return getStripe().paymentIntents.cancel(paymentIntentId);
 }

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
+import { stripe } from '@/lib/stripe';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     // If webhook secret is configured, verify the signature
     if (webhookSecret) {
       try {
-        event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+        event = stripe().webhooks.constructEvent(body, signature, webhookSecret);
       } catch (err) {
         console.error('Webhook signature verification failed:', err);
         return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 });
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        
+
         // Find and update the order
         const order = await prisma.order.findUnique({
           where: { paymentIntentId: paymentIntent.id },
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
       case 'payment_intent.payment_failed': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        
+
         const order = await prisma.order.findUnique({
           where: { paymentIntentId: paymentIntent.id },
         });
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
       case 'payment_intent.canceled': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        
+
         const order = await prisma.order.findUnique({
           where: { paymentIntentId: paymentIntent.id },
         });
