@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     // URL do app deployado em produção
-    url: 'https://sbentregas-i17m.vercel.app',
+    url: 'https://sbentregas-i17m-47rkzufu3-dauerthebests-projects.vercel.app',
     cleartext: false,
   },
   android: {

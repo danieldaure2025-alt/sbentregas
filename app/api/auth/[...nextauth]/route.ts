@@ -2,11 +2,10 @@ import NextAuth from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 
 // Ensure NEXTAUTH_URL is set correctly for all environments
-// This is critical for the Android APK which always accesses via the main domain
+// Use VERCEL_URL for dynamic deployment URLs
 if (!process.env.NEXTAUTH_URL) {
   if (process.env.VERCEL_URL) {
-    // Use the stable Vercel domain, not the deployment-specific URL
-    process.env.NEXTAUTH_URL = `https://sbentregas-i17m.vercel.app`;
+    process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
   } else {
     process.env.NEXTAUTH_URL = 'http://localhost:3000';
   }
