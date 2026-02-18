@@ -1,33 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loading } from '@/components/shared/loading';
-import { StatusBadge } from '@/components/shared/status-badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import {
-  DollarSign,
-  TrendingUp,
-  Users,
-  Clock,
-  CheckCircle,
-  XCircle,
-  QrCode,
+  ArrowUpRight,
+  Banknote,
+  BarChart3,
   Building2,
+  CheckCircle,
+  CreditCard,
+  DollarSign,
   Loader2,
   MapPin,
-  Package,
-  BarChart3,
-  Wallet,
-  ArrowUpRight,
-  ArrowDownRight,
-  Banknote,
-  CreditCard,
+  QrCode,
   RefreshCw,
+  TrendingUp,
+  Users,
+  Wallet,
+  XCircle
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface Withdrawal {
   id: string;
@@ -110,14 +106,21 @@ export default function AdminFinancesPage() {
   const [financeData, setFinanceData] = useState<FinanceData | null>(null);
   const [neighborhoodData, setNeighborhoodData] = useState<NeighborhoodData | null>(null);
   const [period, setPeriod] = useState('month');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [processingWithdrawal, setProcessingWithdrawal] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      const params = new URLSearchParams({ period });
+      if (period === 'custom' && customStartDate && customEndDate) {
+        params.set('startDate', customStartDate);
+        params.set('endDate', customEndDate);
+      }
       const [financeRes, neighborhoodRes] = await Promise.all([
-        fetch(`/api/finances/admin?period=${period}`),
-        fetch(`/api/dashboard/stats/neighborhoods?period=${period}`),
+        fetch(`/api/finances/admin?${params.toString()}`),
+        fetch(`/api/dashboard/stats/neighborhoods?${params.toString()}`),
       ]);
 
       if (!financeRes.ok) {
@@ -147,7 +150,7 @@ export default function AdminFinancesPage() {
 
   useEffect(() => {
     fetchData();
-  }, [period]);
+  }, [period, customStartDate, customEndDate]);
 
   const handleWithdrawalAction = async (id: string, action: 'approve' | 'reject' | 'complete') => {
     setProcessingWithdrawal(id);
@@ -210,7 +213,7 @@ export default function AdminFinancesPage() {
           <h1 className="text-3xl font-bold text-foreground">Central Financeira</h1>
           <p className="text-foreground/60">Gestão financeira completa da plataforma</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
@@ -220,7 +223,25 @@ export default function AdminFinancesPage() {
             <option value="week">7 dias</option>
             <option value="month">30 dias</option>
             <option value="all">Todo período</option>
+            <option value="custom">Personalizado</option>
           </select>
+          {period === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="bg-card border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+              />
+              <span className="text-foreground/60">até</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="bg-card border border-border rounded-lg px-3 py-2 text-foreground text-sm"
+              />
+            </div>
+          )}
           <Button variant="outline" onClick={fetchData}>
             <RefreshCw className="h-4 w-4" />
           </Button>

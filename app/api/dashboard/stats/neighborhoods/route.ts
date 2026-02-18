@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
-import { UserRole, OrderStatus } from '@prisma/client';
+import { OrderStatus, UserRole } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,10 +40,19 @@ export async function GET(req: NextRequest) {
 
     const url = new URL(req.url);
     const period = url.searchParams.get('period') || 'month';
+    const customStart = url.searchParams.get('startDate');
+    const customEnd = url.searchParams.get('endDate');
 
     let startDate = new Date();
-    if (period === 'day') {
+    let endDate = new Date();
+    if (period === 'custom' && customStart && customEnd) {
+      startDate = new Date(customStart);
       startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(customEnd);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (period === 'day') {
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
     } else if (period === 'week') {
       startDate.setDate(startDate.getDate() - 7);
     } else if (period === 'month') {
@@ -52,9 +61,11 @@ export async function GET(req: NextRequest) {
       startDate = new Date(0);
     }
 
+    const dateFilter = period === 'custom' ? { gte: startDate, lte: endDate } : { gte: startDate };
+
     // Get all orders within period
     const orders = await prisma.order.findMany({
-      where: { createdAt: { gte: startDate } },
+      where: { createdAt: dateFilter },
       include: {
         deliveryPerson: { select: { id: true, name: true, email: true } },
         client: { select: { id: true, name: true, email: true } },
@@ -76,7 +87,7 @@ export async function GET(req: NextRequest) {
 
     orders.forEach((order) => {
       const neighborhood = extractNeighborhood(order.originAddress);
-      
+
       if (!neighborhoodStats[neighborhood]) {
         neighborhoodStats[neighborhood] = {
           name: neighborhood,
@@ -128,11 +139,11 @@ export async function GET(req: NextRequest) {
         pending: stat.pending,
         inProgress: stat.inProgress,
         totalRevenue: stat.totalRevenue,
-        deliveredPercent: stat.totalOrders > 0 
-          ? Math.round((stat.delivered / stat.totalOrders) * 100) 
+        deliveredPercent: stat.totalOrders > 0
+          ? Math.round((stat.delivered / stat.totalOrders) * 100)
           : 0,
-        cancelledPercent: stat.totalOrders > 0 
-          ? Math.round((stat.cancelled / stat.totalOrders) * 100) 
+        cancelledPercent: stat.totalOrders > 0
+          ? Math.round((stat.cancelled / stat.totalOrders) * 100)
           : 0,
         deliveryPersons: Array.from(stat.deliveryPersons),
       }))
@@ -142,7 +153,7 @@ export async function GET(req: NextRequest) {
     const totalOrders = orders.length;
     const deliveredOrders = orders.filter((o) => o.status === OrderStatus.DELIVERED).length;
     const cancelledOrders = orders.filter((o) => o.status === OrderStatus.CANCELLED).length;
-    const inProgressOrders = orders.filter((o) => 
+    const inProgressOrders = orders.filter((o) =>
       o.status === OrderStatus.ACCEPTED || o.status === OrderStatus.PICKED_UP || o.status === OrderStatus.IN_TRANSIT
     ).length;
 

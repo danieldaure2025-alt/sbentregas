@@ -1,27 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loading } from '@/components/shared/loading';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loading } from '@/components/shared/loading';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Wallet,
   ArrowDownCircle,
   ArrowUpCircle,
-  Clock,
-  CheckCircle,
-  XCircle,
   Banknote,
-  QrCode,
   Building2,
-  Loader2,
   Calendar,
-  TrendingUp,
+  CheckCircle,
+  Clock,
   CreditCard,
+  Loader2,
+  QrCode,
+  TrendingUp,
+  Wallet,
+  XCircle,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface Delivery {
   id: string;
@@ -81,20 +81,27 @@ export default function FinancesPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<FinancesData | null>(null);
   const [period, setPeriod] = useState('month');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'withdraw' | 'bank'>('overview');
-  
+
   // Withdraw form
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawMethod, setWithdrawMethod] = useState<'PIX' | 'TED'>('PIX');
   const [isWithdrawing, setIsWithdrawing] = useState(false);
-  
+
   // Bank data form
   const [bankData, setBankData] = useState<BankData>({});
   const [isSavingBank, setIsSavingBank] = useState(false);
 
   const fetchData = async () => {
     try {
-      const res = await fetch(`/api/finances?period=${period}`);
+      const params = new URLSearchParams({ period });
+      if (period === 'custom' && customStartDate && customEndDate) {
+        params.set('startDate', customStartDate);
+        params.set('endDate', customEndDate);
+      }
+      const res = await fetch(`/api/finances?${params.toString()}`);
       if (res.ok) {
         const result = await res.json();
         setData(result);
@@ -109,7 +116,7 @@ export default function FinancesPage() {
 
   useEffect(() => {
     fetchData();
-  }, [period]);
+  }, [period, customStartDate, customEndDate]);
 
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
@@ -210,7 +217,25 @@ export default function FinancesPage() {
           <option value="week">Esta Semana</option>
           <option value="month">Este Mês</option>
           <option value="all">Todo Período</option>
+          <option value="custom">Personalizado</option>
         </select>
+        {period === 'custom' && (
+          <div className="flex items-center gap-2 mt-2 md:mt-0">
+            <input
+              type="date"
+              value={customStartDate}
+              onChange={(e) => setCustomStartDate(e.target.value)}
+              className={selectClass + " w-auto text-sm"}
+            />
+            <span className="text-gray-400">até</span>
+            <input
+              type="date"
+              value={customEndDate}
+              onChange={(e) => setCustomEndDate(e.target.value)}
+              className={selectClass + " w-auto text-sm"}
+            />
+          </div>
+        )}
       </div>
 
       {/* Cards de Resumo */}

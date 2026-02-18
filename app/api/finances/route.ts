@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
-import { UserRole, PaymentStatus, OrderStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus, UserRole } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,12 +24,21 @@ export async function GET(req: NextRequest) {
 
     const userId = session.user.id;
     const url = new URL(req.url);
-    const period = url.searchParams.get('period') || 'month'; // day, week, month, all
+    const period = url.searchParams.get('period') || 'month';
+    const customStart = url.searchParams.get('startDate');
+    const customEnd = url.searchParams.get('endDate');
 
     // Calcular data de início baseado no período
     let startDate = new Date();
-    if (period === 'day') {
+    let endDate = new Date();
+    if (period === 'custom' && customStart && customEnd) {
+      startDate = new Date(customStart);
       startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(customEnd);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (period === 'day') {
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
     } else if (period === 'week') {
       startDate.setDate(startDate.getDate() - 7);
     } else if (period === 'month') {
@@ -38,12 +47,14 @@ export async function GET(req: NextRequest) {
       startDate = new Date(0); // all time
     }
 
+    const dateFilter = period === 'custom' ? { gte: startDate, lte: endDate } : { gte: startDate };
+
     // Buscar entregas completadas
     const deliveries = await prisma.order.findMany({
       where: {
         deliveryPersonId: userId,
         status: OrderStatus.DELIVERED,
-        completedAt: { gte: startDate },
+        completedAt: dateFilter,
       },
       include: {
         transactions: {
@@ -63,7 +74,7 @@ export async function GET(req: NextRequest) {
     const withdrawals = await prisma.withdrawal.findMany({
       where: {
         userId,
-        createdAt: { gte: startDate },
+        createdAt: dateFilter,
       },
       orderBy: { createdAt: 'desc' },
     });

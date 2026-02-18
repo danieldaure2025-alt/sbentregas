@@ -686,3 +686,31 @@ model Announcement {
   @@index([sentAt])
   @@index([expiresAt])
 }
+
+// Grupos de rota otimizada para entregas agrupadas
+enum RouteGroupStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model RouteGroup {
+  id                String           @id @default(cuid())
+  deliveryPersonId  String?
+  status            RouteGroupStatus @default(PENDING)
+  orderIds          String[]
+  totalDistance      Float            @default(0)
+  estimatedTime     Int              @default(0)  // minutos
+  optimizedSequence String[]         // IDs em ordem otimizada
+  score             Float            @default(0)  // 0-100 score de eficiência
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  completedAt       DateTime?
+
+  @@index([deliveryPersonId])
+  @@index([status])
+  @@index([createdAt])
+}

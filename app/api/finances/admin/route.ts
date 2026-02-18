@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
-import { UserRole, PaymentStatus, OrderStatus, WithdrawalStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus, UserRole, WithdrawalStatus } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,10 +24,19 @@ export async function GET(req: NextRequest) {
 
     const url = new URL(req.url);
     const period = url.searchParams.get('period') || 'month';
+    const customStart = url.searchParams.get('startDate');
+    const customEnd = url.searchParams.get('endDate');
 
     let startDate = new Date();
-    if (period === 'day') {
+    let endDate = new Date();
+    if (period === 'custom' && customStart && customEnd) {
+      startDate = new Date(customStart);
       startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(customEnd);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (period === 'day') {
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
     } else if (period === 'week') {
       startDate.setDate(startDate.getDate() - 7);
     } else if (period === 'month') {
@@ -36,11 +45,13 @@ export async function GET(req: NextRequest) {
       startDate = new Date(0);
     }
 
+    const dateFilter = period === 'custom' ? { gte: startDate, lte: endDate } : { gte: startDate };
+
     // All transactions
     const transactions = await prisma.transaction.findMany({
       where: {
         paymentStatus: PaymentStatus.COMPLETED,
-        createdAt: { gte: startDate },
+        createdAt: dateFilter,
       },
       include: {
         order: {
@@ -61,7 +72,7 @@ export async function GET(req: NextRequest) {
     const orderStats = await prisma.order.groupBy({
       by: ['status'],
       _count: true,
-      where: { createdAt: { gte: startDate } },
+      where: { createdAt: dateFilter },
     });
 
     // Payment methods breakdown
@@ -70,7 +81,7 @@ export async function GET(req: NextRequest) {
       _count: true,
       _sum: { price: true },
       where: {
-        createdAt: { gte: startDate },
+        createdAt: dateFilter,
         status: { not: OrderStatus.CANCELLED },
       },
     });
@@ -88,7 +99,7 @@ export async function GET(req: NextRequest) {
 
     // All withdrawals for history
     const allWithdrawals = await prisma.withdrawal.findMany({
-      where: { createdAt: { gte: startDate } },
+      where: { createdAt: dateFilter },
       include: {
         user: { select: { name: true, email: true } },
       },
@@ -101,7 +112,7 @@ export async function GET(req: NextRequest) {
       _sum: { amount: true },
       where: {
         status: { in: [WithdrawalStatus.COMPLETED, WithdrawalStatus.APPROVED] },
-        createdAt: { gte: startDate },
+        createdAt: dateFilter,
       },
     });
 
