@@ -1,0 +1,35 @@
+{
+	"appId": "com.daureexpress.cliente",
+	"appName": "Daure Express - Cliente",
+	"webDir": "out",
+	"server": {
+		"url": "https://sbentregas-i17m.vercel.app",
+		"cleartext": false
+	},
+	"android": {
+		"allowMixedContent": true,
+		"captureInput": true,
+		"webContentsDebuggingEnabled": false,
+		"useLegacyBridge": false
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchShowDuration": 2000,
+			"backgroundColor": "#0f1419",
+			"showSpinner": true,
+			"spinnerColor": "#f97316"
+		},
+		"PushNotifications": {
+			"presentationOptions": [
+				"badge",
+				"sound",
+				"alert"
+			]
+		},
+		"LocalNotifications": {
+			"smallIcon": "ic_notification",
+			"iconColor": "#f97316",
+			"sound": "default"
+		}
+	}
+}

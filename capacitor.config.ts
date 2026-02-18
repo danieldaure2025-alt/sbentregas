@@ -6,8 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     // URL do app deployado em produção
-    url: 'https://sistemadauredeentregas.abacusai.app',
-    cleartext: true,
+    url: 'https://sbentregas-i17m.vercel.app',
+    cleartext: false,
   },
   android: {
     allowMixedContent: true,

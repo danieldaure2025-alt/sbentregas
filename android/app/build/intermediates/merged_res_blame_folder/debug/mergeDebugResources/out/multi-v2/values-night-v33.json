@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.daureexpress.app-mergeDebugResources-35:/values-night-v33/values-night-v33.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\dauer\\.gradle\\caches\\8.14.4\\transforms\\e812981a60c08b18e5de449e5b0791db\\transformed\\core-splashscreen-1.2.0\\res\\values-night-v33\\values-night-v33.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "4",
+                        "endColumns": "12",
+                        "endOffsets": "215"
+                    }
+                }
+            ]
+        }
+    ]
+}
