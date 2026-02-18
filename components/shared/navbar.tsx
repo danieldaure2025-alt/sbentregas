@@ -52,7 +52,7 @@ export function Navbar() {
         { href: '/dashboard/emergencies', label: 'Emergências', icon: AlertTriangle },
         { href: '/dashboard/deliveries', label: 'Entregas', icon: Package },
         { href: '/dashboard/delivery-persons', label: 'Motoboys', icon: Bike },
-        { href: '/dashboard/communications', label: 'Comunicados', icon: Megaphone },
+        { href: '/dashboard/communications', label: 'Comunicados', icon: MessageSquare },
         { href: '/dashboard/finances/admin', label: 'Finanças', icon: DollarSign },
         { href: '/dashboard/users', label: 'Usuários', icon: Users },
         { href: '/dashboard/settings', label: 'Configurações', icon: Settings },
