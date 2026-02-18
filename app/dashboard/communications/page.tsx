@@ -14,7 +14,6 @@ import {
     Image as ImageIcon,
     Link as LinkIcon,
     Loader2,
-    MessageSquare,
     Package,
     Plus,
     RefreshCw,
@@ -288,7 +287,7 @@ export default function CommunicationsPage() {
                         Enviar Notificação
                     </TabsTrigger>
                     <TabsTrigger value="announcements" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">
-                        <MessageSquare className="h-4 w-4 mr-2" />
+                        <MessageCircle className="h-4 w-4 mr-2" />
                         Comunicados ({activeAnnouncements.length})
                     </TabsTrigger>
                     <TabsTrigger value="history" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">
@@ -523,7 +522,7 @@ export default function CommunicationsPage() {
                                     {submitting ? (
                                         <Loader2 className="h-5 w-5 animate-spin mr-2" />
                                     ) : (
-                                        <MessageSquare className="h-5 w-5 mr-2" />
+                                        <MessageCircle className="h-5 w-5 mr-2" />
                                     )}
                                     {submitting ? 'Criando...' : 'Criar Comunicado'}
                                 </Button>
@@ -535,7 +534,7 @@ export default function CommunicationsPage() {
                     {activeAnnouncements.length === 0 && !showCreateForm ? (
                         <Card className="bg-card">
                             <CardContent className="py-12 text-center">
-                                <MessageSquare className="h-12 w-12 mx-auto mb-4 text-foreground/30" />
+                                <MessageCircle className="h-12 w-12 mx-auto mb-4 text-foreground/30" />
                                 <p className="text-foreground/60">Nenhum comunicado ativo</p>
                                 <p className="text-sm text-foreground/40 mt-1">Crie um novo comunicado para seus usuários</p>
                             </CardContent>
