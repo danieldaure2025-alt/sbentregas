@@ -9,7 +9,7 @@ import { createS3Client, getBucketConfig } from "./aws-config";
 const s3Client = createS3Client();
 
 /**
- * Generate a presigned URL for uploading a file
+ * Gerar uma URL pré-assinada para upload de arquivo
  */
 export async function generatePresignedUploadUrl(
   fileName: string,
@@ -17,7 +17,7 @@ export async function generatePresignedUploadUrl(
   isPublic: boolean = false
 ): Promise<{ uploadUrl: string; cloud_storage_path: string }> {
   const { bucketName, folderPrefix } = getBucketConfig();
-  
+
   const timestamp = Date.now();
   const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
   const cloud_storage_path = isPublic
@@ -28,7 +28,7 @@ export async function generatePresignedUploadUrl(
     Bucket: bucketName,
     Key: cloud_storage_path,
     ContentType: contentType,
-    ContentDisposition: isPublic ? "attachment" : undefined,
+    ContentDisposition: isPublic ? "inline" : undefined,
   });
 
   const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
@@ -37,7 +37,7 @@ export async function generatePresignedUploadUrl(
 }
 
 /**
- * Get a URL to access a file
+ * Obter URL para acessar um arquivo
  */
 export async function getFileUrl(
   cloud_storage_path: string,
@@ -59,7 +59,7 @@ export async function getFileUrl(
 }
 
 /**
- * Delete a file from S3
+ * Deletar um arquivo do S3
  */
 export async function deleteFile(cloud_storage_path: string): Promise<void> {
   const { bucketName } = getBucketConfig();

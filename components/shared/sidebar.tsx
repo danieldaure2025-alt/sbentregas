@@ -70,6 +70,7 @@ export function Sidebar() {
                 ...baseLinks,
                 { href: '/dashboard/new-order', label: 'Novo Pedido', icon: PlusCircle },
                 { href: '/dashboard/orders', label: 'Meus Pedidos', icon: History },
+                { href: '/dashboard/finances', label: 'Finanças', icon: DollarSign },
             ];
         }
 
@@ -114,8 +115,8 @@ export function Sidebar() {
                         <Link key={link.href} href={link.href}>
                             <div
                                 className={`group flex items-center rounded-lg px-3 py-2.5 transition-all duration-200 ${isActive
-                                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
                                     } ${collapsed ? 'justify-center' : ''}`}
                                 title={collapsed ? link.label : undefined}
                             >

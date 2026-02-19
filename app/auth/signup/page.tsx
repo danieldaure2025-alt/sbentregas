@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Mail, Lock, User, Phone, Truck, FileText, Loader2, QrCode, Building2, CheckSquare, ExternalLink } from 'lucide-react';
+import { Package, Mail, Lock, User, Phone, Truck, FileText, Loader2, QrCode, Building2, CheckSquare, ExternalLink, MapPin } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -34,6 +34,10 @@ export default function SignupPage() {
     accountType: '',
     accountHolder: '',
     cpfCnpj: '',
+    // Campos de estabelecimento (Cliente Delivery)
+    establishmentAddress: '',
+    establishmentPhone: '',
+    establishmentCnpj: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -140,8 +144,8 @@ export default function SignupPage() {
         description: data?.message,
       });
 
-      // Auto login after signup (only for CLIENT and ADMIN)
-      if (formData.role !== 'DELIVERY_PERSON') {
+      // Auto login após cadastro (apenas para CLIENT e ADMIN)
+      if (formData.role !== 'DELIVERY_PERSON' && formData.role !== 'ESTABLISHMENT') {
         await signIn('credentials', {
           email: formData.email,
           password: formData.password,
@@ -265,6 +269,7 @@ export default function SignupPage() {
                 disabled={isLoading}
               >
                 <option value="CLIENT">Cliente</option>
+                <option value="ESTABLISHMENT">Cliente Delivery</option>
                 <option value="DELIVERY_PERSON">Entregador</option>
               </select>
             </div>
@@ -305,7 +310,7 @@ export default function SignupPage() {
                 {/* Dados Bancários - Opcional */}
                 <div className="pt-4 border-t border-gray-700">
                   <p className="text-sm text-gray-400 mb-3">Dados para recebimento (opcional - pode cadastrar depois)</p>
-                  
+
                   {/* PIX */}
                   <div className="space-y-2 mb-3">
                     <Label className="text-gray-300 flex items-center gap-2">
@@ -345,8 +350,8 @@ export default function SignupPage() {
                       name="bankCode"
                       value={formData.bankCode}
                       onChange={(e) => {
-                        const banks: Record<string, string> = {'001':'Banco do Brasil','033':'Santander','104':'Caixa','237':'Bradesco','341':'Itaú','260':'Nubank','077':'Inter'};
-                        setFormData(prev => ({...prev, bankCode: e.target.value, bankName: banks[e.target.value] || ''}));
+                        const banks: Record<string, string> = { '001': 'Banco do Brasil', '033': 'Santander', '104': 'Caixa', '237': 'Bradesco', '341': 'Itaú', '260': 'Nubank', '077': 'Inter' };
+                        setFormData(prev => ({ ...prev, bankCode: e.target.value, bankName: banks[e.target.value] || '' }));
                       }}
                       className="w-full h-10 rounded-md border px-3 py-2 text-sm bg-[hsl(220,20%,15%)] border-gray-700 text-white"
                       disabled={isLoading}
@@ -380,6 +385,57 @@ export default function SignupPage() {
                         />
                       </div>
                     )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {formData.role === 'ESTABLISHMENT' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="establishmentAddress" className="text-gray-300">Endereço do Estabelecimento *</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <Input
+                      id="establishmentAddress"
+                      name="establishmentAddress"
+                      placeholder="Rua, número, bairro..."
+                      value={formData.establishmentAddress}
+                      onChange={handleChange}
+                      required
+                      className={inputClass}
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="establishmentPhone" className="text-gray-300">Telefone do Estabelecimento</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <Input
+                      id="establishmentPhone"
+                      name="establishmentPhone"
+                      placeholder="(00) 00000-0000"
+                      value={formData.establishmentPhone}
+                      onChange={handleChange}
+                      className={inputClass}
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="establishmentCnpj" className="text-gray-300">CNPJ do Estabelecimento</Label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <Input
+                      id="establishmentCnpj"
+                      name="establishmentCnpj"
+                      placeholder="00.000.000/0000-00"
+                      value={formData.establishmentCnpj}
+                      onChange={handleChange}
+                      className={inputClass}
+                      disabled={isLoading}
+                    />
                   </div>
                 </div>
               </>
@@ -453,9 +509,9 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" 
+            <Button
+              type="submit"
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold"
               disabled={isLoading || !acceptedTerms}
             >
               {isLoading ? (

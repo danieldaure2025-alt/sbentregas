@@ -15,12 +15,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
-    if (session.user.role !== UserRole.DELIVERY_PERSON) {
+    if (session.user.role !== UserRole.DELIVERY_PERSON && session.user.role !== UserRole.CLIENT) {
       return NextResponse.json(
-        { error: 'Acesso permitido apenas para entregadores' },
+        { error: 'Acesso não permitido' },
         { status: 403 }
       );
     }
+
+    const isClient = session.user.role === UserRole.CLIENT;
 
     const userId = session.user.id;
     const url = new URL(req.url);
@@ -44,7 +46,7 @@ export async function GET(req: NextRequest) {
     } else if (period === 'month') {
       startDate.setMonth(startDate.getMonth() - 1);
     } else {
-      startDate = new Date(0); // all time
+      startDate = new Date(0); // todo o período
     }
 
     const dateFilter = period === 'custom' ? { gte: startDate, lte: endDate } : { gte: startDate };
@@ -52,7 +54,7 @@ export async function GET(req: NextRequest) {
     // Buscar entregas completadas
     const deliveries = await prisma.order.findMany({
       where: {
-        deliveryPersonId: userId,
+        ...(isClient ? { clientId: userId } : { deliveryPersonId: userId }),
         status: OrderStatus.DELIVERED,
         completedAt: dateFilter,
       },
@@ -64,10 +66,10 @@ export async function GET(req: NextRequest) {
       orderBy: { completedAt: 'desc' },
     });
 
-    // Calcular ganhos totais do período
+    // Calcular valores totais do período
     const totalEarnings = deliveries.reduce((sum, order) => {
       const tx = order.transactions[0];
-      return sum + (tx?.deliveryFee || 0);
+      return sum + (isClient ? (tx?.totalAmount || 0) : (tx?.deliveryFee || 0));
     }, 0);
 
     // Buscar saques já realizados no período
@@ -123,7 +125,7 @@ export async function GET(req: NextRequest) {
       bankData: user,
     });
   } catch (error) {
-    console.error('Error fetching finances:', error);
+    console.error('Erro ao buscar finanças:', error);
     return NextResponse.json(
       { error: 'Erro ao buscar dados financeiros' },
       { status: 500 }
