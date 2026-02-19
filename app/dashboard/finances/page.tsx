@@ -15,6 +15,7 @@ import {
   CheckCircle,
   Clock,
   CreditCard,
+  Download,
   Loader2,
   QrCode,
   TrendingUp,
@@ -22,6 +23,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { exportToCSV, formatDateBR } from '@/lib/export-csv';
 
 interface Delivery {
   id: string;
@@ -208,17 +210,31 @@ export default function FinancesPage() {
           </h1>
           <p className="text-gray-400">Gerencie seus ganhos e saques</p>
         </div>
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          className={selectClass + " w-auto"}
-        >
-          <option value="day">Hoje</option>
-          <option value="week">Esta Semana</option>
-          <option value="month">Este Mês</option>
-          <option value="all">Todo Período</option>
-          <option value="custom">Personalizado</option>
-        </select>
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            className={selectClass + " w-auto"}
+          >
+            <option value="day">Hoje</option>
+            <option value="week">Esta Semana</option>
+            <option value="month">Este Mês</option>
+            <option value="all">Todo Período</option>
+            <option value="custom">Personalizado</option>
+          </select>
+          <Button variant="outline" size="sm" onClick={() => {
+            if (!data?.deliveries?.length) return;
+            exportToCSV(data.deliveries, [
+              { header: 'Origem', accessor: (d) => d.originAddress },
+              { header: 'Destino', accessor: (d) => d.destinationAddress },
+              { header: 'Valor (R$)', accessor: (d) => d.deliveryFee },
+              { header: 'Data', accessor: (d) => formatDateBR(d.completedAt) },
+            ], `financeiro_${new Date().toISOString().slice(0, 10)}`);
+          }}>
+            <Download className="h-4 w-4 mr-1" />
+            Exportar
+          </Button>
+        </div>
         {period === 'custom' && (
           <div className="flex items-center gap-2 mt-2 md:mt-0">
             <input

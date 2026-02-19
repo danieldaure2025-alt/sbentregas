@@ -13,6 +13,7 @@ import {
   CheckCircle,
   CreditCard,
   DollarSign,
+  Download,
   Loader2,
   MapPin,
   QrCode,
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { exportToCSV, formatDateBR, translatePaymentMethod } from '@/lib/export-csv';
 
 interface Withdrawal {
   id: string;
@@ -244,6 +246,26 @@ export default function AdminFinancesPage() {
           )}
           <Button variant="outline" onClick={fetchData}>
             <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" onClick={() => {
+            if (!financeData) return;
+            // Exportar transações
+            if (financeData.recentTransactions.length > 0) {
+              exportToCSV(financeData.recentTransactions, [
+                { header: 'Cliente', accessor: (t) => t.order.client?.name || t.order.client?.email || '' },
+                { header: 'Entregador', accessor: (t) => t.order.deliveryPerson?.name || 'N/A' },
+                { header: 'Origem', accessor: (t) => t.order.originAddress },
+                { header: 'Destino', accessor: (t) => t.order.destinationAddress },
+                { header: 'Valor Total (R$)', accessor: (t) => t.totalAmount },
+                { header: 'Taxa Plataforma (R$)', accessor: (t) => t.platformFee },
+                { header: 'Taxa Entrega (R$)', accessor: (t) => t.deliveryFee },
+                { header: 'Pagamento', accessor: (t) => translatePaymentMethod(t.paymentMethod) },
+                { header: 'Data', accessor: (t) => formatDateBR(t.createdAt) },
+              ], `financeiro_admin_${new Date().toISOString().slice(0, 10)}`);
+            }
+          }}>
+            <Download className="h-4 w-4 mr-2" />
+            Exportar
           </Button>
         </div>
       </div>

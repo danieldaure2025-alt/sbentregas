@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Loader2,
   AlertTriangle,
+  Download,
 } from 'lucide-react';
 import { OrderStatus } from '@prisma/client';
 import {
@@ -35,6 +36,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { exportToCSV, formatDateBR, translateStatus, translatePaymentMethod } from '@/lib/export-csv';
 
 interface Order {
   id: string;
@@ -110,7 +112,7 @@ export default function AdminDeliveriesPage() {
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error);
-      
+
       toast({ title: 'Sucesso', description: 'Pedido excluído com sucesso' });
       fetchData();
     } catch (error) {
@@ -147,10 +149,30 @@ export default function AdminDeliveriesPage() {
           <h1 className="text-3xl font-bold text-foreground">Painel de Entregas</h1>
           <p className="text-foreground/60">Gerencie todas as entregas da plataforma</p>
         </div>
-        <Button variant="outline" onClick={fetchData} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Atualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => {
+            if (!data?.orders?.length) return;
+            exportToCSV(data.orders, [
+              { header: 'ID', accessor: (o) => o.id.slice(-6) },
+              { header: 'Status', accessor: (o) => translateStatus(o.status) },
+              { header: 'Cliente', accessor: (o) => o.client?.name || o.client?.email || '' },
+              { header: 'Entregador', accessor: (o) => o.deliveryPerson?.name || 'Sem entregador' },
+              { header: 'Origem', accessor: (o) => o.originAddress },
+              { header: 'Destino', accessor: (o) => o.destinationAddress },
+              { header: 'Valor (R$)', accessor: (o) => o.price },
+              { header: 'Distância (km)', accessor: (o) => o.distance },
+              { header: 'Pagamento', accessor: (o) => translatePaymentMethod(o.paymentMethod) },
+              { header: 'Data', accessor: (o) => formatDateBR(o.createdAt) },
+            ], `entregas_${new Date().toISOString().slice(0, 10)}`);
+          }}>
+            <Download className="h-4 w-4 mr-2" />
+            Exportar
+          </Button>
+          <Button variant="outline" onClick={fetchData} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/shared/loading';
 import { EmptyState } from '@/components/shared/empty-state';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { Package, PlusCircle, Filter } from 'lucide-react';
+import { Package, PlusCircle, Filter, Download } from 'lucide-react';
 import Link from 'next/link';
 import { UserRole } from '@prisma/client';
+import { exportToCSV, formatDateBR, translateStatus } from '@/lib/export-csv';
 
 interface Order {
   id: string;
@@ -60,6 +61,21 @@ export default function OrdersPage() {
             Visualize e gerencie os pedidos da plataforma
           </p>
         </div>
+        <Button variant="outline" onClick={() => {
+          if (!orders?.length) return;
+          exportToCSV(orders, [
+            { header: 'Status', accessor: (o) => translateStatus(o.status) },
+            { header: 'Origem', accessor: (o) => o.originAddress },
+            { header: 'Destino', accessor: (o) => o.destinationAddress },
+            { header: 'Valor (R$)', accessor: (o) => o.price },
+            { header: 'Distância (km)', accessor: (o) => o.distance },
+            { header: 'Entregador', accessor: (o) => o.deliveryPerson?.name || '-' },
+            { header: 'Data', accessor: (o) => formatDateBR(o.createdAt) },
+          ], `pedidos_${new Date().toISOString().slice(0, 10)}`);
+        }}>
+          <Download className="h-4 w-4 mr-2" />
+          Exportar
+        </Button>
       </div>
 
       <Card>

@@ -8,6 +8,7 @@ import {
     ChevronLeft,
     ChevronRight,
     DollarSign,
+    Download,
     Package,
     Phone,
     RefreshCw,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { exportToCSV } from '@/lib/export-csv';
 
 interface ClientSummary {
     id: string;
@@ -153,6 +155,50 @@ export default function DailyClosingPage() {
                     )}
                     <Button variant="outline" size="icon" onClick={fetchData}>
                         <RefreshCw className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" onClick={() => {
+                        if (!data) return;
+                        const allRows = [
+                            ...data.byClient.map(c => ({
+                                tipo: 'Cliente' as string,
+                                nome: c.name,
+                                email: c.email,
+                                telefone: c.phone || '-',
+                                pedidos: c.orders,
+                                entregues: c.delivered,
+                                pendentes: c.pending,
+                                valorTotal: c.totalValue,
+                                taxaPlataforma: c.platformFee,
+                                frete: c.deliveryFee,
+                            })),
+                            ...data.byDeliveryPerson.map(d => ({
+                                tipo: 'Entregador' as string,
+                                nome: d.name,
+                                email: d.email,
+                                telefone: d.phone || '-',
+                                pedidos: d.orders,
+                                entregues: d.delivered,
+                                pendentes: d.pending,
+                                valorTotal: d.totalValue,
+                                taxaPlataforma: 0,
+                                frete: d.totalDeliveryFee,
+                            })),
+                        ];
+                        exportToCSV(allRows, [
+                            { header: 'Tipo', accessor: (r) => r.tipo },
+                            { header: 'Nome', accessor: (r) => r.nome },
+                            { header: 'Email', accessor: (r) => r.email },
+                            { header: 'Telefone', accessor: (r) => r.telefone },
+                            { header: 'Pedidos', accessor: (r) => r.pedidos },
+                            { header: 'Entregues', accessor: (r) => r.entregues },
+                            { header: 'Pendentes', accessor: (r) => r.pendentes },
+                            { header: 'Valor Total (R$)', accessor: (r) => r.valorTotal },
+                            { header: 'Taxa Plataf. (R$)', accessor: (r) => r.taxaPlataforma },
+                            { header: 'Frete (R$)', accessor: (r) => r.frete },
+                        ], `fechamento_${selectedDate}`);
+                    }}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Exportar
                     </Button>
                 </div>
             </div>

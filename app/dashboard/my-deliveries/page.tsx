@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/shared/loading';
 import { EmptyState } from '@/components/shared/empty-state';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { Package, Filter } from 'lucide-react';
+import { Package, Filter, Download } from 'lucide-react';
 import Link from 'next/link';
+import { exportToCSV, formatDateBR, translateStatus } from '@/lib/export-csv';
 
 interface Order {
   id: string;
@@ -55,9 +56,27 @@ export default function MyDeliveriesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Minhas Entregas</h1>
-        <p className="text-muted-foreground">Gerencie suas entregas e atualize status</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Minhas Entregas</h1>
+          <p className="text-muted-foreground">Gerencie suas entregas e atualize status</p>
+        </div>
+        <Button variant="outline" onClick={() => {
+          if (!orders?.length) return;
+          exportToCSV(orders, [
+            { header: 'Status', accessor: (o) => translateStatus(o.status) },
+            { header: 'Cliente', accessor: (o) => o.client?.name || '-' },
+            { header: 'Origem', accessor: (o) => o.originAddress },
+            { header: 'Destino', accessor: (o) => o.destinationAddress },
+            { header: 'Valor Total (R$)', accessor: (o) => o.price },
+            { header: 'Ganho (R$)', accessor: (o) => o.transactions?.[0]?.deliveryFee || 0 },
+            { header: 'Distância (km)', accessor: (o) => o.distance },
+            { header: 'Data', accessor: (o) => formatDateBR(o.createdAt) },
+          ], `minhas_entregas_${new Date().toISOString().slice(0, 10)}`);
+        }}>
+          <Download className="h-4 w-4 mr-2" />
+          Exportar
+        </Button>
       </div>
 
       <Card>
