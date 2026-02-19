@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getAuthUser } from '@/lib/mobile-auth';
 import { prisma } from '@/lib/db';
 
 /**
  * POST /api/users/fcm-token
  * Register or update FCM token for the current user
+ * Supports both NextAuth session (web) and Bearer JWT (mobile)
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
+    const user = await getAuthUser(request);
+
+    if (!user?.id) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user's FCM token
-    const user = await prisma.user.update({
-      where: { id: session.user.id },
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
       data: {
         fcmToken,
         fcmTokenUpdatedAt: new Date(),
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log(`FCM token updated for user ${user.id}: ${fcmToken.substring(0, 20)}...`);
+    console.log(`FCM token updated for user ${updatedUser.id}: ${fcmToken.substring(0, 20)}...`);
 
     return NextResponse.json({
       success: true,
@@ -61,11 +61,11 @@ export async function POST(request: NextRequest) {
  * DELETE /api/users/fcm-token
  * Remove FCM token for the current user (e.g., when logging out)
  */
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
+    const user = await getAuthUser(request);
+
+    if (!user?.id) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
@@ -74,14 +74,14 @@ export async function DELETE() {
 
     // Remove user's FCM token
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: user.id },
       data: {
         fcmToken: null,
         fcmTokenUpdatedAt: null,
       },
     });
 
-    console.log(`FCM token removed for user ${session.user.id}`);
+    console.log(`FCM token removed for user ${user.id}`);
 
     return NextResponse.json({
       success: true,
