@@ -2,11 +2,19 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createS3Client, getBucketConfig } from "./aws-config";
 
-const s3Client = createS3Client();
+let s3Client: S3Client | null = null;
+
+function getS3Client(): S3Client {
+  if (!s3Client) {
+    s3Client = createS3Client();
+  }
+  return s3Client;
+}
 
 /**
  * Gerar uma URL pré-assinada para upload de arquivo
@@ -17,6 +25,10 @@ export async function generatePresignedUploadUrl(
   isPublic: boolean = false
 ): Promise<{ uploadUrl: string; cloud_storage_path: string }> {
   const { bucketName, folderPrefix } = getBucketConfig();
+
+  if (!bucketName) {
+    throw new Error("AWS_BUCKET_NAME não está configurado");
+  }
 
   const timestamp = Date.now();
   const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -31,7 +43,7 @@ export async function generatePresignedUploadUrl(
     ContentDisposition: isPublic ? "inline" : undefined,
   });
 
-  const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+  const uploadUrl = await getSignedUrl(getS3Client(), command, { expiresIn: 3600 });
 
   return { uploadUrl, cloud_storage_path };
 }
@@ -55,7 +67,7 @@ export async function getFileUrl(
     ResponseContentDisposition: "attachment",
   });
 
-  return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+  return await getSignedUrl(getS3Client(), command, { expiresIn: 3600 });
 }
 
 /**
@@ -69,5 +81,5 @@ export async function deleteFile(cloud_storage_path: string): Promise<void> {
     Key: cloud_storage_path,
   });
 
-  await s3Client.send(command);
+  await getS3Client().send(command);
 }

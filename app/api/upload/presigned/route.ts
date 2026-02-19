@@ -6,7 +6,7 @@ import { generatePresignedUploadUrl } from '@/lib/s3';
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Não autorizado' },
@@ -42,10 +42,10 @@ export async function POST(request: NextRequest) {
       uploadUrl,
       cloud_storage_path,
     });
-  } catch (error) {
-    console.error('Error generating presigned URL:', error);
+  } catch (error: any) {
+    console.error('Erro ao gerar presigned URL:', error?.message || error);
     return NextResponse.json(
-      { error: 'Erro ao gerar URL de upload' },
+      { error: error?.message || 'Erro ao gerar URL de upload' },
       { status: 500 }
     );
   }
