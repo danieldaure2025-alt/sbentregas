@@ -1,9 +1,9 @@
 {
-	"appId": "com.daureexpress.cliente",
-	"appName": "Daure Express - Cliente",
+	"appId": "com.daureexpress.app",
+	"appName": "Daure Express",
 	"webDir": "out",
 	"server": {
-		"url": "https://sbentregas-i17m-dauerthebests-projects.vercel.app",
+		"url": "https://saobentoentregas.vercel.app",
 		"cleartext": false
 	},
 	"android": {

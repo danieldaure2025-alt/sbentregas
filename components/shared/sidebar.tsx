@@ -71,6 +71,7 @@ export function Sidebar() {
                 { href: '/dashboard/new-order', label: 'Novo Pedido', icon: PlusCircle },
                 { href: '/dashboard/orders', label: 'Meus Pedidos', icon: History },
                 { href: '/dashboard/finances', label: 'Finanças', icon: DollarSign },
+                { href: '/dashboard/my-settings', label: 'Configurações', icon: Settings },
             ];
         }
 

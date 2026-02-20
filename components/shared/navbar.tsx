@@ -69,6 +69,7 @@ export function Navbar({ variant = 'topbar' }: NavbarProps) {
         ...baseLinks,
         { href: '/dashboard/new-order', label: 'Novo Pedido', icon: PlusCircle },
         { href: '/dashboard/orders', label: 'Meus Pedidos', icon: History },
+        { href: '/dashboard/my-settings', label: 'Configurações', icon: Settings },
       ];
     } else if (userRole === UserRole.DELIVERY_PERSON) {
       return [
@@ -76,6 +77,7 @@ export function Navbar({ variant = 'topbar' }: NavbarProps) {
         { href: '/dashboard/available', label: 'Disponíveis', icon: ShoppingCart },
         { href: '/dashboard/my-deliveries', label: 'Minhas Entregas', icon: TruckIcon },
         { href: '/dashboard/finances', label: 'Finanças', icon: Wallet },
+        { href: '/dashboard/my-settings', label: 'Configurações', icon: Settings },
       ];
     } else if (userRole === UserRole.ESTABLISHMENT) {
       return [
@@ -83,6 +85,7 @@ export function Navbar({ variant = 'topbar' }: NavbarProps) {
         { href: '/dashboard/establishment', label: 'Painel', icon: Package },
         { href: '/dashboard/orders', label: 'Pedidos', icon: History },
         { href: '/dashboard/finances', label: 'Finanças', icon: Wallet },
+        { href: '/dashboard/my-settings', label: 'Configurações', icon: Settings },
       ];
     }
 
