@@ -13,6 +13,7 @@ import { UserRole } from '@prisma/client';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
+import { OrderNotificationBubble } from '@/components/shared/order-notification-bubble';
 
 const Navbar = dynamic(() => import('@/components/shared/navbar').then((mod) => ({ default: mod.Navbar })), {
   ssr: false,
@@ -92,6 +93,7 @@ export function DashboardLayoutClient({ children }: { children: React.ReactNode 
       <Navbar variant="topbar" />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
       <WhatsAppButton />
+      {userRole === UserRole.DELIVERY_PERSON && <OrderNotificationBubble />}
     </div>
   );
 }
