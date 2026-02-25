@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getAuthUser } from '@/lib/mobile-auth';
 import { prisma } from '@/lib/db';
 import { DeliveryPersonStatus, EventType } from '@prisma/client';
 
 // POST - Acionar botão de pânico
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const authUser = await getAuthUser(request);
+    if (!authUser?.id) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: authUser.id },
       select: {
         id: true,
         name: true,
@@ -102,8 +101,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       alertId: alert.id,
       message: 'Alerta de emergência enviado! Administradores foram notificados.',
     });
@@ -116,13 +115,13 @@ export async function POST(request: NextRequest) {
 // DELETE - Resolver emergência (cancelar pânico)
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const authUser2 = await getAuthUser(request);
+    if (!authUser2?.id) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: authUser2.id },
       select: {
         id: true,
         role: true,
@@ -163,8 +162,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Atualizar status - voltar para ONLINE ou status anterior
-    const newStatus = user.activeOrderId 
-      ? DeliveryPersonStatus.EM_ROTA_COLETA 
+    const newStatus = user.activeOrderId
+      ? DeliveryPersonStatus.EM_ROTA_COLETA
       : DeliveryPersonStatus.ONLINE;
 
     await prisma.user.update({
@@ -189,8 +188,8 @@ export async function DELETE(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       newStatus,
       message: 'Emergência cancelada.',
     });

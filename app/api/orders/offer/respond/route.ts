@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getAuthUser } from '@/lib/mobile-auth';
 import { prisma } from '@/lib/db';
 import { GEO_CONSTANTS } from '@/lib/geo-utils';
 import { DeliveryPersonStatus, EventType, OfferStatus, OrderStatus, OfferFailureReason } from '@prisma/client';
@@ -8,13 +7,13 @@ import { DeliveryPersonStatus, EventType, OfferStatus, OrderStatus, OfferFailure
 // POST - Aceitar ou rejeitar oferta de pedido
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const authUser = await getAuthUser(request);
+    if (!authUser?.id) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: authUser.id },
       select: {
         id: true,
         role: true,
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
       // Marcar como expirada com motivo TIMEOUT
       await prisma.orderOffer.update({
         where: { id: offerId },
-        data: { 
+        data: {
           status: OfferStatus.EXPIRED,
           failureReason: OfferFailureReason.TIMEOUT,
           respondedAt: new Date(),
@@ -91,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     if (accept) {
       // ACEITAR PEDIDO
-      
+
       // Verificar se pedido ainda está disponível
       if (offer.order.status !== OrderStatus.PENDING || offer.order.deliveryPersonId) {
         await prisma.orderOffer.update({
@@ -104,8 +103,8 @@ export async function POST(request: NextRequest) {
       // Atualizar oferta
       await prisma.orderOffer.update({
         where: { id: offerId },
-        data: { 
-          status: OfferStatus.ACCEPTED, 
+        data: {
+          status: OfferStatus.ACCEPTED,
           respondedAt: now,
         },
       });
@@ -154,20 +153,20 @@ export async function POST(request: NextRequest) {
         data: { status: OfferStatus.EXPIRED },
       });
 
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         message: 'Pedido aceito! Vá até o local de coleta.',
         orderId: offer.orderId,
         newStatus: DeliveryPersonStatus.EM_ROTA_COLETA,
       });
     } else {
       // REJEITAR PEDIDO
-      
+
       // Atualizar oferta com motivo REJECTED
       await prisma.orderOffer.update({
         where: { id: offerId },
-        data: { 
-          status: OfferStatus.REJECTED, 
+        data: {
+          status: OfferStatus.REJECTED,
           failureReason: OfferFailureReason.REJECTED,
           respondedAt: now,
         },
@@ -179,7 +178,7 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           orderId: offer.orderId,
           eventType: EventType.ORDER_REJECT,
-          details: JSON.stringify({ 
+          details: JSON.stringify({
             offerId,
             reason: 'REJECTED',
             attemptNumber: offer.attemptNumber,
@@ -200,8 +199,8 @@ export async function POST(request: NextRequest) {
           data: { deliveryStatus: DeliveryPersonStatus.OFFLINE, isOnline: false },
         });
 
-        return NextResponse.json({ 
-          success: true, 
+        return NextResponse.json({
+          success: true,
           message: 'Pedido rejeitado. Você foi pausado por muitas rejeições.',
           paused: true,
           rejectionsToday: updated.rejectionsToday,
@@ -211,8 +210,8 @@ export async function POST(request: NextRequest) {
       // Tentar oferecer para próximo entregador
       // (Isso será feito automaticamente pelo cron/polling)
 
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         message: 'Pedido rejeitado.',
         rejectionsToday: updated.rejectionsToday,
         priorityScore: updated.priorityScore,

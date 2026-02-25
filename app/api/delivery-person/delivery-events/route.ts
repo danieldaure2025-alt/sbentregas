@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getAuthUser } from '@/lib/mobile-auth';
 import { prisma } from '@/lib/db';
 import { isWithinRadius, GEO_CONSTANTS } from '@/lib/geo-utils';
 import { DeliveryPersonStatus, EventType, OrderStatus } from '@prisma/client';
@@ -8,13 +7,13 @@ import { DeliveryPersonStatus, EventType, OrderStatus } from '@prisma/client';
 // POST - Registrar eventos de entrega (chegada coleta, saída, chegada entrega, finalizar)
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const authUser = await getAuthUser(request);
+    if (!authUser?.id) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: authUser.id },
       select: {
         id: true,
         role: true,
@@ -129,8 +128,8 @@ export async function POST(request: NextRequest) {
     // Se localização não validada, retornar aviso mas não bloquear
     // (Em produção pode-se decidir bloquear)
     if (!locationValidated) {
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         warning: validationMessage,
         locationValidated: false,
       });
@@ -139,7 +138,7 @@ export async function POST(request: NextRequest) {
     // Atualizar pedido se necessário
     if (newOrderStatus) {
       const updateData: Record<string, unknown> = { status: newOrderStatus };
-      
+
       if (newOrderStatus === OrderStatus.PICKED_UP) {
         updateData.pickedUpAt = now;
       } else if (newOrderStatus === OrderStatus.IN_TRANSIT) {
@@ -156,7 +155,7 @@ export async function POST(request: NextRequest) {
 
     // Atualizar entregador se necessário
     if (newDeliveryStatus) {
-      const deliveryUpdate: Record<string, unknown> = { 
+      const deliveryUpdate: Record<string, unknown> = {
         deliveryStatus: newDeliveryStatus,
         currentLatitude: latitude,
         currentLongitude: longitude,
@@ -186,7 +185,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       eventType,
       newOrderStatus,

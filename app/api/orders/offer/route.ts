@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getAuthUser } from '@/lib/mobile-auth';
 import { prisma } from '@/lib/db';
 import { haversineDistance, GEO_CONSTANTS } from '@/lib/geo-utils';
 import { DeliveryPersonStatus, EventType, OfferStatus, OrderStatus } from '@prisma/client';
@@ -8,8 +7,8 @@ import { DeliveryPersonStatus, EventType, OfferStatus, OrderStatus } from '@pris
 // POST - Criar oferta para um pedido (distribuição por proximidade)
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const authUser = await getAuthUser(request);
+    if (!authUser?.id) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
@@ -54,7 +53,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingOffer) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Já existe uma oferta pendente para este pedido',
         offerId: existingOffer.id,
       }, { status: 400 });
@@ -81,7 +80,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (availableDeliveryPersons.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Nenhum entregador disponível no momento',
         waitingForDelivery: true,
       }, { status: 200 });
@@ -92,9 +91,9 @@ export async function POST(request: NextRequest) {
       // Geocodificar endereço de origem (usar primeiro entregador)
       const firstDelivery = availableDeliveryPersons[0];
       const offer = await createOffer(order.id, firstDelivery.id, 0);
-      
-      return NextResponse.json({ 
-        success: true, 
+
+      return NextResponse.json({
+        success: true,
         offer,
         message: 'Oferta criada (sem coordenadas de origem)',
       });
@@ -124,7 +123,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (deliveryPersonsWithDistance.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Nenhum entregador próximo o suficiente',
         waitingForDelivery: true,
       }, { status: 200 });
@@ -133,13 +132,13 @@ export async function POST(request: NextRequest) {
     // Criar oferta para o entregador mais próximo
     const selectedDeliveryPerson = deliveryPersonsWithDistance[0];
     const offer = await createOffer(
-      order.id, 
-      selectedDeliveryPerson.id, 
+      order.id,
+      selectedDeliveryPerson.id,
       selectedDeliveryPerson.distance
     );
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       offer,
       deliveryPerson: {
         id: selectedDeliveryPerson.id,
