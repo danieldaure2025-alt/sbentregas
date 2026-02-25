@@ -9,11 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { CheckoutWrapper } from '@/components/checkout/checkout-wrapper';
-import { MapPin, Navigation, FileText, DollarSign, Loader2, CreditCard, ArrowRight, CheckCircle, ArrowLeft, Banknote, QrCode, Clock, Plus, Trash2, Calendar } from 'lucide-react';
+import { MapPin, Navigation, FileText, DollarSign, Loader2, CreditCard, ArrowRight, CheckCircle, ArrowLeft, Truck, Receipt, Clock, Plus, Trash2, Calendar } from 'lucide-react';
 import { PAYMENT_METHOD_LABELS } from '@/lib/constants';
 
 type Step = 'details' | 'payment' | 'success';
-type PaymentMethod = 'CREDIT_CARD' | 'PIX' | 'CASH' | 'END_OF_DAY';
+type PaymentMethod = 'CREDIT_CARD' | 'ON_DELIVERY' | 'INVOICED' | 'END_OF_DAY';
 
 interface LocationInput {
   id: string;
@@ -25,7 +25,7 @@ export default function NewOrderPage() {
   const [originAddresses, setOriginAddresses] = useState<LocationInput[]>([{ id: '1', address: '' }]);
   const [destinationAddresses, setDestinationAddresses] = useState<LocationInput[]>([{ id: '1', address: '' }]);
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CREDIT_CARD');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ON_DELIVERY');
   const [estimate, setEstimate] = useState<any>(null);
   const [order, setOrder] = useState<any>(null);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -177,17 +177,15 @@ export default function NewOrderPage() {
 
       setOrder(data.order);
 
-      if (paymentMethod === 'CASH') {
+      if (paymentMethod === 'ON_DELIVERY' || paymentMethod === 'INVOICED' || paymentMethod === 'END_OF_DAY') {
         setStep('success');
         toast({
           title: 'Pedido Criado!',
-          description: 'Pagamento será realizado na entrega.',
-        });
-      } else if (paymentMethod === 'PIX') {
-        setStep('success');
-        toast({
-          title: 'Pedido Criado!',
-          description: 'Realize o pagamento PIX para liberar a coleta.',
+          description: paymentMethod === 'ON_DELIVERY'
+            ? 'Pagamento será realizado na entrega.'
+            : paymentMethod === 'INVOICED'
+              ? 'Pedido faturado! Será cobrado no seu ciclo de pagamento.'
+              : 'Cobrado ao final do expediente.',
         });
       } else {
         setStep('payment');
@@ -223,25 +221,25 @@ export default function NewOrderPage() {
   if (step === 'success') {
     const getSuccessMessage = () => {
       switch (paymentMethod) {
-        case 'PIX':
-          return {
-            title: 'Pedido Criado - Aguardando PIX',
-            description: 'Realize o pagamento via PIX. Após a confirmação do recebimento, seu pedido será liberado para coleta.',
-            icon: <QrCode className="w-10 h-10 text-blue-400" />,
-            bgColor: 'bg-gray-800 border-blue-500/50',
-            iconBg: 'bg-blue-500/20',
-            textColor: 'text-blue-400',
-            descColor: 'text-blue-300',
-          };
-        case 'CASH':
+        case 'ON_DELIVERY':
           return {
             title: 'Pedido Criado - Pagamento na Entrega',
-            description: 'O pagamento será realizado em dinheiro no momento da entrega.',
-            icon: <Banknote className="w-10 h-10 text-green-400" />,
+            description: 'O pagamento será realizado diretamente ao entregador no momento da entrega.',
+            icon: <Truck className="w-10 h-10 text-green-400" />,
             bgColor: 'bg-gray-800 border-green-500/50',
             iconBg: 'bg-green-500/20',
             textColor: 'text-green-400',
             descColor: 'text-green-300',
+          };
+        case 'INVOICED':
+          return {
+            title: 'Pedido Criado - Faturado',
+            description: 'Este pedido foi faturado e será cobrado no seu ciclo de pagamento (semanal, quinzenal ou mensal).',
+            icon: <Receipt className="w-10 h-10 text-blue-400" />,
+            bgColor: 'bg-gray-800 border-blue-500/50',
+            iconBg: 'bg-blue-500/20',
+            textColor: 'text-blue-400',
+            descColor: 'text-blue-300',
           };
         case 'END_OF_DAY':
           return {
@@ -284,12 +282,10 @@ export default function NewOrderPage() {
                 Pedido #{order?.id?.slice(-8).toUpperCase()}
               </p>
 
-              {paymentMethod === 'PIX' && (
+              {paymentMethod === 'INVOICED' && (
                 <div className="bg-gray-900 p-4 rounded-lg border border-blue-500/30 mt-4">
-                  <p className="text-sm text-gray-400 mb-2">Chave PIX para pagamento:</p>
-                  <p className="font-mono font-bold text-xl text-white">47 99292-5584</p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Após o pagamento, entre em contato via WhatsApp para confirmação.
+                  <p className="text-sm text-blue-300">
+                    A fatura será gerada automaticamente e enviada no vencimento do seu ciclo de pagamento.
                   </p>
                 </div>
               )}
@@ -588,8 +584,8 @@ export default function NewOrderPage() {
                   type="button"
                   onClick={() => setPaymentMethod('CREDIT_CARD')}
                   className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${paymentMethod === 'CREDIT_CARD'
-                      ? 'border-orange-500 bg-orange-500/10'
-                      : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
+                    ? 'border-orange-500 bg-orange-500/10'
+                    : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
                     }`}
                 >
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center ${paymentMethod === 'CREDIT_CARD' ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-300'
@@ -605,47 +601,47 @@ export default function NewOrderPage() {
                   )}
                 </button>
 
-                {/* PIX */}
+                {/* Na Entrega */}
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod('PIX')}
-                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${paymentMethod === 'PIX'
-                      ? 'border-blue-500 bg-blue-500/10'
-                      : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
+                  onClick={() => setPaymentMethod('ON_DELIVERY')}
+                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${paymentMethod === 'ON_DELIVERY'
+                    ? 'border-green-500 bg-green-500/10'
+                    : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
                     }`}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${paymentMethod === 'PIX' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${paymentMethod === 'ON_DELIVERY' ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-300'
                     }`}>
-                    <QrCode className="w-6 h-6" />
+                    <Truck className="w-6 h-6" />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className={`font-semibold ${paymentMethod === 'PIX' ? 'text-blue-400' : 'text-white'}`}>PIX</p>
-                    <p className="text-sm text-gray-400">Transferência instantânea</p>
+                    <p className={`font-semibold ${paymentMethod === 'ON_DELIVERY' ? 'text-green-400' : 'text-white'}`}>Na Entrega</p>
+                    <p className="text-sm text-gray-400">Pagamento ao entregador na hora da entrega</p>
                   </div>
-                  {paymentMethod === 'PIX' && (
-                    <CheckCircle className="w-6 h-6 text-blue-500" />
+                  {paymentMethod === 'ON_DELIVERY' && (
+                    <CheckCircle className="w-6 h-6 text-green-500" />
                   )}
                 </button>
 
-                {/* Dinheiro */}
+                {/* Faturada */}
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod('CASH')}
-                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${paymentMethod === 'CASH'
-                      ? 'border-green-500 bg-green-500/10'
-                      : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
+                  onClick={() => setPaymentMethod('INVOICED')}
+                  className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${paymentMethod === 'INVOICED'
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
                     }`}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${paymentMethod === 'CASH' ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-300'
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${paymentMethod === 'INVOICED' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
                     }`}>
-                    <Banknote className="w-6 h-6" />
+                    <Receipt className="w-6 h-6" />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className={`font-semibold ${paymentMethod === 'CASH' ? 'text-green-400' : 'text-white'}`}>Dinheiro</p>
-                    <p className="text-sm text-gray-400">Pagamento na entrega</p>
+                    <p className={`font-semibold ${paymentMethod === 'INVOICED' ? 'text-blue-400' : 'text-white'}`}>Faturada</p>
+                    <p className="text-sm text-gray-400">Cobrado no ciclo: semanal, quinzenal ou mensal</p>
                   </div>
-                  {paymentMethod === 'CASH' && (
-                    <CheckCircle className="w-6 h-6 text-green-500" />
+                  {paymentMethod === 'INVOICED' && (
+                    <CheckCircle className="w-6 h-6 text-blue-500" />
                   )}
                 </button>
 
@@ -655,8 +651,8 @@ export default function NewOrderPage() {
                     type="button"
                     onClick={() => setPaymentMethod('END_OF_DAY')}
                     className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${paymentMethod === 'END_OF_DAY'
-                        ? 'border-purple-500 bg-purple-500/10'
-                        : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
+                      ? 'border-purple-500 bg-purple-500/10'
+                      : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
                       }`}
                   >
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center ${paymentMethod === 'END_OF_DAY' ? 'bg-purple-500 text-white' : 'bg-gray-700 text-gray-300'
@@ -676,26 +672,26 @@ export default function NewOrderPage() {
 
               {/* Info box baseado na seleção */}
               <div className={`p-4 rounded-lg border ${paymentMethod === 'CREDIT_CARD'
-                  ? 'bg-orange-500/10 border-orange-500/30'
-                  : paymentMethod === 'PIX'
-                    ? 'bg-blue-500/10 border-blue-500/30'
-                    : paymentMethod === 'END_OF_DAY'
-                      ? 'bg-purple-500/10 border-purple-500/30'
-                      : 'bg-green-500/10 border-green-500/30'
+                ? 'bg-orange-500/10 border-orange-500/30'
+                : paymentMethod === 'INVOICED'
+                  ? 'bg-blue-500/10 border-blue-500/30'
+                  : paymentMethod === 'END_OF_DAY'
+                    ? 'bg-purple-500/10 border-purple-500/30'
+                    : 'bg-green-500/10 border-green-500/30'
                 }`}>
                 {paymentMethod === 'CREDIT_CARD' && (
                   <p className="text-sm text-orange-300">
                     <strong className="text-orange-400">Pagamento Seguro:</strong> Você será redirecionado para a página de pagamento seguro via Stripe.
                   </p>
                 )}
-                {paymentMethod === 'PIX' && (
-                  <p className="text-sm text-blue-300">
-                    <strong className="text-blue-400">PIX:</strong> Após criar o pedido, você receberá a chave PIX para realizar a transferência. A coleta só será liberada após confirmarmos o recebimento do pagamento.
+                {paymentMethod === 'ON_DELIVERY' && (
+                  <p className="text-sm text-green-300">
+                    <strong className="text-green-400">Na Entrega:</strong> O pagamento será realizado diretamente ao entregador no momento da entrega.
                   </p>
                 )}
-                {paymentMethod === 'CASH' && (
-                  <p className="text-sm text-green-300">
-                    <strong className="text-green-400">Dinheiro:</strong> O pagamento será realizado em espécie diretamente ao entregador no momento da entrega.
+                {paymentMethod === 'INVOICED' && (
+                  <p className="text-sm text-blue-300">
+                    <strong className="text-blue-400">Faturada:</strong> Este pedido será faturado e cobrado no seu ciclo de pagamento (semanal, quinzenal ou mensal).
                   </p>
                 )}
                 {paymentMethod === 'END_OF_DAY' && (
@@ -718,8 +714,8 @@ export default function NewOrderPage() {
                 ) : (
                   <>
                     {paymentMethod === 'CREDIT_CARD' && <CreditCard className="w-5 h-5 mr-2" />}
-                    {paymentMethod === 'PIX' && <QrCode className="w-5 h-5 mr-2" />}
-                    {paymentMethod === 'CASH' && <Banknote className="w-5 h-5 mr-2" />}
+                    {paymentMethod === 'ON_DELIVERY' && <Truck className="w-5 h-5 mr-2" />}
+                    {paymentMethod === 'INVOICED' && <Receipt className="w-5 h-5 mr-2" />}
                     {paymentMethod === 'END_OF_DAY' && <Calendar className="w-5 h-5 mr-2" />}
                     {paymentMethod === 'CREDIT_CARD' ? 'Continuar para Pagamento' : 'Criar Pedido'}
                     <ArrowRight className="w-5 h-5 ml-2" />

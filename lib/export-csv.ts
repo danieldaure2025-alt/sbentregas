@@ -97,6 +97,8 @@ export function translatePaymentMethod(method?: string): string {
         DEBIT_CARD: 'Cartão de Débito',
         CASH: 'Dinheiro',
         END_OF_DAY: 'Diária',
+        ON_DELIVERY: 'Na Entrega',
+        INVOICED: 'Faturada',
     };
     return method ? (map[method] || method) : '-';
 }

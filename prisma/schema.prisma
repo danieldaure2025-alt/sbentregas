@@ -51,6 +51,20 @@ enum PaymentMethod {
   DEBIT_CARD
   CASH
   END_OF_DAY
+  ON_DELIVERY
+  INVOICED
+}
+
+enum BillingCycle {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
 }
 
 enum WithdrawalStatus {
@@ -230,6 +244,9 @@ model User {
   // End of day billing (client/establishment)
   endOfDayBilling   Boolean   @default(false)
   
+  // Billing cycle for invoiced clients
+  billingCycle      BillingCycle?
+  
   // Establishment specific fields
   establishmentName     String?
   establishmentAddress  String?
@@ -298,6 +315,12 @@ model Order {
   price               Float
   distance            Float       // in kilometers
   paymentMethod       PaymentMethod?
+  
+  // Invoice billing
+  billingCycle        BillingCycle?
+  invoiceStatus       InvoiceStatus?
+  invoiceDueDate      DateTime?
+  invoicePaidAt       DateTime?
   
   // Stripe Payment Intent
   paymentIntentId     String?     @unique

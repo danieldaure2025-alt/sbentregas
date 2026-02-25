@@ -136,6 +136,9 @@ export default function AdminDeliveriesPage() {
       case 'CREDIT_CARD': return 'Cartão';
       case 'PIX': return 'PIX';
       case 'CASH': return 'Dinheiro';
+      case 'ON_DELIVERY': return 'Na Entrega';
+      case 'INVOICED': return 'Faturada';
+      case 'END_OF_DAY': return 'Final do Dia';
       default: return 'Não definido';
     }
   };

@@ -226,8 +226,9 @@ export default function OrderDetailsPage() {
         throw new Error(data?.error || 'Erro ao confirmar pagamento');
       }
 
-      const paymentLabel = order?.paymentMethod === 'PIX' ? 'PIX' : 
-                          order?.paymentMethod === 'CASH' ? 'Dinheiro' : 'Final do Dia';
+      const paymentLabel = order?.paymentMethod === 'ON_DELIVERY' ? 'Na Entrega' :
+        order?.paymentMethod === 'INVOICED' ? 'Faturada' :
+          order?.paymentMethod === 'CASH' ? 'Dinheiro' : 'Final do Dia';
 
       toast({
         title: 'Pagamento Confirmado!',
@@ -462,10 +463,10 @@ export default function OrderDetailsPage() {
             deliveryPersonLocation={
               tracking?.hasLocation && tracking.deliveryPerson
                 ? {
-                    lat: tracking.deliveryPerson.latitude,
-                    lng: tracking.deliveryPerson.longitude,
-                    name: tracking.deliveryPerson.name,
-                  }
+                  lat: tracking.deliveryPerson.latitude,
+                  lng: tracking.deliveryPerson.longitude,
+                  name: tracking.deliveryPerson.name,
+                }
                 : null
             }
           />
@@ -479,132 +480,87 @@ export default function OrderDetailsPage() {
             <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
               <AlertCircle className="w-5 h-5" />
               Pagamento Pendente
-              {order.paymentMethod === 'PIX' && ' - PIX'}
             </CardTitle>
             <CardDescription>
-              {order.paymentMethod === 'PIX' 
-                ? 'Aguardando confirmação do pagamento PIX'
-                : 'Complete o pagamento para confirmar seu pedido'}
+              Complete o pagamento para confirmar seu pedido
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {order.paymentMethod === 'PIX' ? (
-              <div className="space-y-4">
-                {/* Info PIX para o cliente */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <p className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Chave PIX para pagamento:</p>
-                  <p className="font-mono font-bold text-xl text-blue-900 dark:text-blue-100">47 99292-5584</p>
-                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-2">
-                    Valor: <span className="font-bold">R$ {order.price.toFixed(2)}</span>
-                  </p>
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                    Após realizar o pagamento, entre em contato via WhatsApp para confirmação mais rápida.
-                  </p>
-                </div>
-
-                {/* Botão de confirmação para Admin */}
-                {isAdmin && (
-                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                    <p className="text-sm text-green-800 dark:text-green-200 mb-3">
-                      <strong>Admin:</strong> Após verificar o recebimento do PIX, confirme o pagamento para liberar o pedido.
-                    </p>
-                    <Button 
-                      onClick={handleConfirmPayment}
-                      disabled={isConfirmingPix}
-                      className="w-full bg-green-600 hover:bg-green-700"
-                    >
-                      {isConfirmingPix ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Confirmando...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Confirmar Recebimento do PIX
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border">
-                <CheckoutWrapper
-                  orderId={order.id}
-                  amount={order.price}
-                  onSuccess={() => {
-                    setPaymentSuccess(true);
-                    toast({
-                      title: 'Pagamento Confirmado!',
-                      description: 'Seu pedido foi pago com sucesso.',
-                    });
-                    // Refresh order data
-                    window.location.reload();
-                  }}
-                  onError={(error) => {
-                    toast({
-                      title: 'Erro no Pagamento',
-                      description: error,
-                      variant: 'destructive',
-                    });
-                  }}
-                />
-              </div>
-            )}
+            <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border">
+              <CheckoutWrapper
+                orderId={order.id}
+                amount={order.price}
+                onSuccess={() => {
+                  setPaymentSuccess(true);
+                  toast({
+                    title: 'Pagamento Confirmado!',
+                    description: 'Seu pedido foi pago com sucesso.',
+                  });
+                  // Refresh order data
+                  window.location.reload();
+                }}
+                onError={(error) => {
+                  toast({
+                    title: 'Erro no Pagamento',
+                    description: error,
+                    variant: 'destructive',
+                  });
+                }}
+              />
+            </div>
           </CardContent>
         </Card>
       )}
 
       {/* Admin Payment Confirmation for CASH/END_OF_DAY */}
-      {isAdmin && 
-       order.status !== 'AWAITING_PAYMENT' &&
-       order.status !== 'CANCELLED' &&
-       (order.paymentMethod === 'CASH' || order.paymentMethod === 'END_OF_DAY') && 
-       order?.transactions?.[0]?.paymentStatus === 'PENDING' && (
-        <Card className="border-green-500/30 bg-green-900/10">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-400">
-              <DollarSign className="w-5 h-5" />
-              Confirmar Pagamento - {order.paymentMethod === 'CASH' ? 'Dinheiro' : 'Final do Dia'}
-            </CardTitle>
-            <CardDescription className="text-foreground/70">
-              Confirme o recebimento do pagamento em {order.paymentMethod === 'CASH' ? 'dinheiro' : 'final do dia'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-                <div className="flex justify-between mb-2">
-                  <span className="text-foreground/70">Valor Total</span>
-                  <span className="font-bold text-xl text-green-400">R$ {order.price.toFixed(2)}</span>
+      {isAdmin &&
+        order.status !== 'AWAITING_PAYMENT' &&
+        order.status !== 'CANCELLED' &&
+        (order.paymentMethod === 'CASH' || order.paymentMethod === 'END_OF_DAY' || order.paymentMethod === 'ON_DELIVERY') &&
+        order?.transactions?.[0]?.paymentStatus === 'PENDING' && (
+          <Card className="border-green-500/30 bg-green-900/10">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-green-400">
+                <DollarSign className="w-5 h-5" />
+                Confirmar Pagamento - {order.paymentMethod === 'CASH' ? 'Dinheiro' : order.paymentMethod === 'ON_DELIVERY' ? 'Na Entrega' : 'Final do Dia'}
+              </CardTitle>
+              <CardDescription className="text-foreground/70">
+                Confirme o recebimento do pagamento ({order.paymentMethod === 'CASH' ? 'dinheiro' : order.paymentMethod === 'ON_DELIVERY' ? 'na entrega' : 'final do dia'})
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-foreground/70">Valor Total</span>
+                    <span className="font-bold text-xl text-green-400">R$ {order.price.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-foreground/60">Status do Pagamento</span>
+                    <span className="text-yellow-400">Pendente</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-foreground/60">Status do Pagamento</span>
-                  <span className="text-yellow-400">Pendente</span>
-                </div>
+                <Button
+                  onClick={handleConfirmPayment}
+                  disabled={isConfirmingPix}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  {isConfirmingPix ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Confirmando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Confirmar Recebimento {order.paymentMethod === 'CASH' ? 'em Dinheiro' : order.paymentMethod === 'ON_DELIVERY' ? '- Na Entrega' : '- Final do Dia'}
+                    </>
+                  )}
+                </Button>
               </div>
-              <Button 
-                onClick={handleConfirmPayment}
-                disabled={isConfirmingPix}
-                className="w-full bg-green-600 hover:bg-green-700"
-              >
-                {isConfirmingPix ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Confirmando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Confirmar Recebimento {order.paymentMethod === 'CASH' ? 'em Dinheiro' : '- Final do Dia'}
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        )}
 
       {/* Timeline */}
       <Card>
@@ -793,11 +749,10 @@ export default function OrderDetailsPage() {
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
                   key={star}
-                  className={`w-6 h-6 ${
-                    star <= (order?.rating?.rating ?? 0)
-                      ? 'text-yellow-500 fill-yellow-500'
-                      : 'text-gray-500'
-                  }`}
+                  className={`w-6 h-6 ${star <= (order?.rating?.rating ?? 0)
+                    ? 'text-yellow-500 fill-yellow-500'
+                    : 'text-gray-500'
+                    }`}
                 />
               ))}
               <span className="font-medium text-lg">{order?.rating?.rating}/5</span>
@@ -845,11 +800,10 @@ export default function OrderDetailsPage() {
                     className="focus:outline-none"
                   >
                     <Star
-                      className={`w-8 h-8 cursor-pointer transition-colors ${
-                        star <= rating
-                          ? 'text-yellow-500 fill-yellow-500'
-                          : 'text-gray-300 hover:text-yellow-400'
-                      }`}
+                      className={`w-8 h-8 cursor-pointer transition-colors ${star <= rating
+                        ? 'text-yellow-500 fill-yellow-500'
+                        : 'text-gray-300 hover:text-yellow-400'
+                        }`}
                     />
                   </button>
                 ))}

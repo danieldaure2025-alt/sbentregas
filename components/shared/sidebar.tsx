@@ -61,6 +61,7 @@ export function Sidebar() {
                 { href: '/dashboard/delivery-persons', label: 'Motoboys', icon: Bike },
                 { href: '/dashboard/communications', label: 'Comunicados', icon: MessageCircle },
                 { href: '/dashboard/finances/admin', label: 'Finanças', icon: DollarSign },
+                { href: '/dashboard/invoices', label: 'Faturados', icon: History },
                 { href: '/dashboard/daily-closing', label: 'Fechamento', icon: Calendar },
                 { href: '/dashboard/users', label: 'Usuários', icon: Users },
                 { href: '/dashboard/settings', label: 'Configurações', icon: Settings },

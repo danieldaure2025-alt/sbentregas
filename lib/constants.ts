@@ -41,4 +41,6 @@ export const PAYMENT_METHOD_LABELS = {
   DEBIT_CARD: 'Cartão de Débito',
   CASH: 'Dinheiro',
   END_OF_DAY: 'Cobrança no Final do Dia',
+  ON_DELIVERY: 'Na Entrega',
+  INVOICED: 'Faturada',
 };
