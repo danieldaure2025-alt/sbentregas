@@ -12,6 +12,7 @@ import {
     ChevronRight,
     DollarSign,
     History,
+    Layers,
     LayoutDashboard,
     LogOut,
     Map,
@@ -65,6 +66,7 @@ export function Sidebar() {
                 { href: '/dashboard/invoices', label: 'Faturados', icon: History },
                 { href: '/dashboard/daily-closing', label: 'Fechamento', icon: Calendar },
                 { href: '/dashboard/order-map', label: 'Mapa de Pedidos', icon: Map },
+                { href: '/dashboard/batch-orders', label: 'Agrupar Pedidos', icon: Layers },
                 { href: '/dashboard/users', label: 'Usuários', icon: Users },
                 { href: '/dashboard/settings', label: 'Configurações', icon: Settings },
             ];

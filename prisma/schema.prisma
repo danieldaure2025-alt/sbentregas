@@ -329,6 +329,10 @@ model Order {
   isScheduled         Boolean     @default(false)
   scheduledAt         DateTime?
   
+  // Batching (agrupamento de pedidos)
+  batchId             String?     // Pedidos com mesmo batchId = mesmo lote
+  batchOrder          Int?        // Ordem de entrega dentro do lote (1, 2, 3...)
+  
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
   acceptedAt          DateTime?
@@ -354,6 +358,7 @@ model Order {
   @@index([establishmentId])
   @@index([status])
   @@index([createdAt])
+  @@index([batchId])
 }
 
 model Transaction {
