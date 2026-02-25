@@ -19,7 +19,7 @@ export default function SettingsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'pricing' | 'routing'>('pricing');
+  const [activeTab, setActiveTab] = useState<'pricing' | 'routing' | 'distribution'>('pricing');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -129,6 +129,15 @@ export default function SettingsPage() {
             }`}
         >
           🗺️ Otimização de Rotas
+        </button>
+        <button
+          onClick={() => setActiveTab('distribution')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'distribution'
+            ? 'bg-background text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground'
+            }`}
+        >
+          📡 Distribuição
         </button>
       </div>
 
@@ -295,6 +304,9 @@ export default function SettingsPage() {
 
       {/* Routing Tab */}
       {activeTab === 'routing' && <RoutingSettingsSection />}
+
+      {/* Distribution Tab */}
+      {activeTab === 'distribution' && <DistributionSettingsSection />}
     </div>
   );
 }
@@ -501,3 +513,173 @@ function RoutingSettingsSection() {
   );
 }
 
+// ======================================================================
+// Distribution Mode Settings Sub-Component
+// ======================================================================
+
+type DistributionMode = 'ALL' | 'ONE_BY_ONE' | 'MANUAL';
+
+const DISTRIBUTION_MODES: { value: DistributionMode; label: string; emoji: string; description: string; details: string[] }[] = [
+  {
+    value: 'ALL',
+    label: 'Todos',
+    emoji: '📡',
+    description: 'Pedido enviado para todos os entregadores próximos ao mesmo tempo.',
+    details: [
+      'Todos os entregadores disponíveis próximos recebem a oferta',
+      'O primeiro que aceitar fica com o pedido',
+      'As demais ofertas são canceladas automaticamente',
+      'Mais rápido, ideal para alta demanda',
+    ],
+  },
+  {
+    value: 'ONE_BY_ONE',
+    label: '1 x 1',
+    emoji: '🔄',
+    description: 'Pedido oferecido para um entregador por vez, com timeout de 60s.',
+    details: [
+      'Oferta enviada para o entregador mais próximo',
+      'Se recusar ou expirar, passa para o próximo',
+      'Sistema de prioridade e penalidade por rejeição',
+      'Mais justo, indicado para operação normal',
+    ],
+  },
+  {
+    value: 'MANUAL',
+    label: 'Manual',
+    emoji: '👤',
+    description: 'Admin escolhe e atribui o entregador manualmente.',
+    details: [
+      'Nenhuma distribuição automática é feita',
+      'Admin atribui via dashboard de entregas',
+      'Controle total sobre quem faz cada entrega',
+      'Indicado para operação com poucos entregadores',
+    ],
+  },
+];
+
+function DistributionSettingsSection() {
+  const [currentMode, setCurrentMode] = useState<DistributionMode>('ONE_BY_ONE');
+  const [loadingDist, setLoadingDist] = useState(true);
+  const [savingDist, setSavingDist] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchMode = async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.DISTRIBUTION_MODE && ['ALL', 'ONE_BY_ONE', 'MANUAL'].includes(data.DISTRIBUTION_MODE)) {
+            setCurrentMode(data.DISTRIBUTION_MODE as DistributionMode);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching distribution mode:', error);
+      } finally {
+        setLoadingDist(false);
+      }
+    };
+    fetchMode();
+  }, []);
+
+  const handleSave = async (mode: DistributionMode) => {
+    setSavingDist(true);
+    setCurrentMode(mode);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ distributionMode: mode }),
+      });
+
+      if (res.ok) {
+        toast({
+          title: 'Modo de Distribuição Salvo',
+          description: `Modo "${DISTRIBUTION_MODES.find(m => m.value === mode)?.label}" ativado com sucesso!`,
+        });
+      } else {
+        toast({
+          title: 'Erro',
+          description: 'Erro ao salvar modo de distribuição',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error saving distribution mode:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao salvar modo de distribuição',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingDist(false);
+    }
+  };
+
+  if (loadingDist) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-orange-500/30">
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <span>📡</span>
+          <span>Modo de Distribuição de Pedidos</span>
+        </CardTitle>
+        <CardDescription>
+          Defina como os pedidos são distribuídos para os entregadores
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <div className="grid md:grid-cols-3 gap-4">
+          {DISTRIBUTION_MODES.map((mode) => {
+            const isActive = currentMode === mode.value;
+            return (
+              <button
+                key={mode.value}
+                onClick={() => handleSave(mode.value)}
+                disabled={savingDist}
+                className={`text-left p-4 rounded-xl border-2 transition-all duration-200 ${isActive
+                    ? 'border-orange-500 bg-orange-500/10 shadow-lg shadow-orange-500/10'
+                    : 'border-muted hover:border-muted-foreground/30 hover:bg-muted/50'
+                  } ${savingDist ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-3xl">{mode.emoji}</span>
+                  <div>
+                    <p className={`font-bold text-lg ${isActive ? 'text-orange-400' : ''}`}>
+                      {mode.label}
+                    </p>
+                    {isActive && (
+                      <span className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">
+                        ATIVO
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">{mode.description}</p>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  {mode.details.map((d, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="text-orange-400 mt-0.5">•</span>
+                      <span>{d}</span>
+                    </li>
+                  ))}
+                </ul>
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

@@ -13,7 +13,6 @@ async function notifyAdminsOrderFailed(
   orderDetails: { originAddress: string; destinationAddress: string; price: number }
 ) {
   try {
-    // Buscar todos os admins com FCM token
     const admins = await prisma.user.findMany({
       where: {
         role: 'ADMIN',
@@ -30,7 +29,6 @@ async function notifyAdminsOrderFailed(
     const title = '🚨 ALERTA CRÍTICO: Pedido sem entregador';
     const body = `Pedido #${orderId.slice(-8)} falhou após ${attemptCount} tentativas. Nenhum entregador disponível.`;
 
-    // Criar notificação no banco para cada admin
     for (const admin of admins) {
       await prisma.notification.create({
         data: {
@@ -49,7 +47,6 @@ async function notifyAdminsOrderFailed(
         },
       });
 
-      // Enviar push notification
       if (admin.fcmToken) {
         try {
           await sendPushNotification(admin.fcmToken, {
@@ -68,7 +65,6 @@ async function notifyAdminsOrderFailed(
       }
     }
 
-    // Registrar evento crítico
     await prisma.eventLog.create({
       data: {
         userId: admins[0]?.id || 'system',
@@ -91,6 +87,24 @@ async function notifyAdminsOrderFailed(
   }
 }
 
+/**
+ * Buscar o modo de distribuição configurado
+ */
+async function getDistributionMode(): Promise<'ALL' | 'ONE_BY_ONE' | 'MANUAL'> {
+  try {
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: 'DISTRIBUTION_MODE' },
+    });
+    const mode = config?.value || 'ONE_BY_ONE';
+    if (['ALL', 'ONE_BY_ONE', 'MANUAL'].includes(mode)) {
+      return mode as 'ALL' | 'ONE_BY_ONE' | 'MANUAL';
+    }
+    return 'ONE_BY_ONE';
+  } catch {
+    return 'ONE_BY_ONE';
+  }
+}
+
 // POST - Auto distribuir pedidos pendentes sem oferta ativa
 // Chamado via cron ou manualmente
 export async function POST(request: NextRequest) {
@@ -103,9 +117,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
+    const distributionMode = await getDistributionMode();
+    console.log(`[Auto-Distribute] Modo de distribuição: ${distributionMode}`);
+
+    // Se modo MANUAL, apenas expirar ofertas e não distribuir
+    if (distributionMode === 'MANUAL') {
+      // Mesmo no modo manual, expirar ofertas antigas
+      const now = new Date();
+      const pendingExpiredOffers = await prisma.orderOffer.findMany({
+        where: {
+          status: OfferStatus.PENDING,
+          expiresAt: { lt: now },
+        },
+        select: { id: true },
+      });
+
+      for (const offer of pendingExpiredOffers) {
+        await prisma.orderOffer.update({
+          where: { id: offer.id },
+          data: {
+            status: OfferStatus.EXPIRED,
+            failureReason: OfferFailureReason.TIMEOUT,
+            respondedAt: now,
+          },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        mode: 'MANUAL',
+        expiredCount: pendingExpiredOffers.length,
+        distributedCount: 0,
+        failedCount: 0,
+        message: 'Modo manual ativo - distribuição automática desabilitada',
+      });
+    }
+
     const now = new Date();
 
-    // 1. Expirar ofertas antigas e marcar com motivo TIMEOUT
+    // 1. Expirar ofertas antigas
     const pendingExpiredOffers = await prisma.orderOffer.findMany({
       where: {
         status: OfferStatus.PENDING,
@@ -119,7 +169,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Atualizar cada oferta expirada com motivo TIMEOUT
     for (const offer of pendingExpiredOffers) {
       await prisma.orderOffer.update({
         where: { id: offer.id },
@@ -130,7 +179,6 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Registrar log de timeout
       await prisma.eventLog.create({
         data: {
           userId: offer.deliveryPersonId,
@@ -145,11 +193,10 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Aplicar penalidade ao entregador por não responder
       await prisma.user.update({
         where: { id: offer.deliveryPersonId },
         data: {
-          priorityScore: { increment: GEO_CONSTANTS.REJECTION_PENALTY_POINTS / 2 }, // Penalidade menor por timeout
+          priorityScore: { increment: GEO_CONSTANTS.REJECTION_PENALTY_POINTS / 2 },
           rejectionsToday: { increment: 1 },
         },
       });
@@ -184,6 +231,7 @@ export async function POST(request: NextRequest) {
     if (ordersNeedingDistribution.length === 0) {
       return NextResponse.json({
         success: true,
+        mode: distributionMode,
         expiredCount: pendingExpiredOffers.length,
         distributedCount: 0,
         failedCount: 0,
@@ -216,166 +264,266 @@ export async function POST(request: NextRequest) {
     let distributedCount = 0;
     let failedCount = 0;
 
-    for (const order of ordersNeedingDistribution) {
-      // Calcular número da próxima tentativa
-      const lastAttempt = order.orderOffers[0];
-      const currentAttemptNumber = lastAttempt ? lastAttempt.attemptNumber + 1 : 1;
+    // ========================================
+    // MODO: TODOS — enviar para todos de uma vez
+    // ========================================
+    if (distributionMode === 'ALL') {
+      for (const order of ordersNeedingDistribution) {
+        if (!order.originLatitude || !order.originLongitude) continue;
 
-      // Verificar se atingiu o limite máximo de tentativas
-      if (currentAttemptNumber > GEO_CONSTANTS.MAX_OFFER_ATTEMPTS) {
-        console.log(`[Fallback] Pedido ${order.id} atingiu ${currentAttemptNumber - 1} tentativas - marcando como NO_COURIER_AVAILABLE`);
-
-        // Atualizar status do pedido
-        await prisma.order.update({
-          where: { id: order.id },
-          data: {
-            status: OrderStatus.NO_COURIER_AVAILABLE,
-            updatedAt: now,
-          },
-        });
-
-        // Notificar admins
-        await notifyAdminsOrderFailed(order.id, currentAttemptNumber - 1, {
-          originAddress: order.originAddress,
-          destinationAddress: order.destinationAddress,
-          price: order.price,
-        });
-
-        failedCount++;
-        continue;
-      }
-
-      if (!order.originLatitude || !order.originLongitude) continue;
-
-      // Buscar entregadores que já recusaram/expiraram este pedido
-      const previousOfferDeliveryPersonIds = await prisma.orderOffer.findMany({
-        where: {
-          orderId: order.id,
-          status: { in: [OfferStatus.REJECTED, OfferStatus.EXPIRED] },
-        },
-        select: { deliveryPersonId: true },
-      });
-
-      const excludedIds = new Set(previousOfferDeliveryPersonIds.map(o => o.deliveryPersonId));
-
-      // Calcular distância para cada entregador (excluindo os que já recusaram)
-      const nearbyDeliveryPersons = availableDeliveryPersons
-        .filter(dp => !excludedIds.has(dp.id))
-        .map((dp) => ({
-          ...dp,
-          distance: haversineDistance(
-            dp.currentLatitude!,
-            dp.currentLongitude!,
-            order.originLatitude!,
-            order.originLongitude!
-          ),
-        }))
-        .filter((dp) => dp.distance <= GEO_CONSTANTS.MAX_PICKUP_DISTANCE_KM)
-        .sort((a, b) => {
-          if (a.priorityScore !== b.priorityScore) {
-            return a.priorityScore - b.priorityScore;
-          }
-          return a.distance - b.distance;
-        });
-
-      // Verificar se o entregador já tem oferta pendente para outro pedido
-      const availableNow = [];
-      for (const dp of nearbyDeliveryPersons) {
-        const hasActiveOffer = await prisma.orderOffer.findFirst({
+        // Buscar entregadores que já recusaram
+        const previousOfferDeliveryPersonIds = await prisma.orderOffer.findMany({
           where: {
-            deliveryPersonId: dp.id,
-            status: OfferStatus.PENDING,
-            expiresAt: { gt: now },
+            orderId: order.id,
+            status: { in: [OfferStatus.REJECTED, OfferStatus.EXPIRED] },
           },
+          select: { deliveryPersonId: true },
         });
-        if (!hasActiveOffer) {
-          availableNow.push(dp);
-        }
-      }
+        const excludedIds = new Set(previousOfferDeliveryPersonIds.map(o => o.deliveryPersonId));
 
-      if (availableNow.length === 0) {
-        console.log(`[Auto-Distribute] Nenhum entregador disponível para pedido ${order.id} (tentativa ${currentAttemptNumber})`);
-        
-        // Se não há entregadores e já estamos na última tentativa
-        if (currentAttemptNumber >= GEO_CONSTANTS.MAX_OFFER_ATTEMPTS) {
-          console.log(`[Fallback] Pedido ${order.id} sem entregadores disponíveis - marcando como NO_COURIER_AVAILABLE`);
-          
-          await prisma.order.update({
-            where: { id: order.id },
+        // Filtrar por proximidade
+        const nearbyDeliveryPersons = availableDeliveryPersons
+          .filter(dp => !excludedIds.has(dp.id))
+          .map((dp) => ({
+            ...dp,
+            distance: haversineDistance(
+              dp.currentLatitude!,
+              dp.currentLongitude!,
+              order.originLatitude!,
+              order.originLongitude!
+            ),
+          }))
+          .filter((dp) => dp.distance <= GEO_CONSTANTS.MAX_PICKUP_DISTANCE_KM)
+          .sort((a, b) => a.distance - b.distance);
+
+        if (nearbyDeliveryPersons.length === 0) {
+          const lastAttempt = order.orderOffers[0];
+          const currentAttemptNumber = lastAttempt ? lastAttempt.attemptNumber + 1 : 1;
+
+          if (currentAttemptNumber >= GEO_CONSTANTS.MAX_OFFER_ATTEMPTS) {
+            await prisma.order.update({
+              where: { id: order.id },
+              data: { status: OrderStatus.NO_COURIER_AVAILABLE, updatedAt: now },
+            });
+            await notifyAdminsOrderFailed(order.id, currentAttemptNumber, {
+              originAddress: order.originAddress,
+              destinationAddress: order.destinationAddress,
+              price: order.price,
+            });
+            failedCount++;
+          }
+          continue;
+        }
+
+        // Criar oferta para TODOS os entregadores próximos
+        const lastAttempt = order.orderOffers[0];
+        const currentAttemptNumber = lastAttempt ? lastAttempt.attemptNumber + 1 : 1;
+        const expiresAt = new Date(now.getTime() + GEO_CONSTANTS.OFFER_TIMEOUT_SECONDS * 1000);
+
+        let offersCreated = 0;
+        for (const dp of nearbyDeliveryPersons) {
+          // Verificar se já tem oferta ativa para outro pedido
+          const hasActiveOffer = await prisma.orderOffer.findFirst({
+            where: {
+              deliveryPersonId: dp.id,
+              status: OfferStatus.PENDING,
+              expiresAt: { gt: now },
+            },
+          });
+          if (hasActiveOffer) continue;
+
+          await prisma.orderOffer.create({
             data: {
-              status: OrderStatus.NO_COURIER_AVAILABLE,
-              updatedAt: now,
+              orderId: order.id,
+              deliveryPersonId: dp.id,
+              distanceToPickup: dp.distance,
+              attemptNumber: currentAttemptNumber,
+              offeredAt: now,
+              expiresAt,
             },
           });
 
-          await notifyAdminsOrderFailed(order.id, currentAttemptNumber, {
+          // Enviar push
+          if (dp.fcmToken) {
+            try {
+              await sendNewOrderNotification(
+                [dp.fcmToken],
+                {
+                  orderId: order.id,
+                  originAddress: order.originAddress,
+                  destinationAddress: order.destinationAddress,
+                  price: order.price,
+                  distance: order.distance || 0,
+                }
+              );
+            } catch (pushError) {
+              console.error(`[Auto-Distribute-ALL] Erro push para ${dp.name}:`, pushError);
+            }
+          }
+
+          offersCreated++;
+          console.log(`[Auto-Distribute-ALL] Oferta criada para ${dp.name} (${dp.distance.toFixed(2)}km)`);
+        }
+
+        await prisma.eventLog.create({
+          data: {
+            userId: 'system',
+            orderId: order.id,
+            eventType: EventType.ORDER_OFFER,
+            details: JSON.stringify({
+              mode: 'ALL',
+              offersCreated,
+              attemptNumber: currentAttemptNumber,
+              expiresAt: expiresAt.toISOString(),
+            }),
+          },
+        });
+
+        if (offersCreated > 0) distributedCount++;
+        console.log(`[Auto-Distribute-ALL] Pedido ${order.id}: ${offersCreated} ofertas enviadas`);
+      }
+    }
+
+    // ========================================
+    // MODO: 1x1 — um entregador por vez (lógica original)
+    // ========================================
+    if (distributionMode === 'ONE_BY_ONE') {
+      for (const order of ordersNeedingDistribution) {
+        const lastAttempt = order.orderOffers[0];
+        const currentAttemptNumber = lastAttempt ? lastAttempt.attemptNumber + 1 : 1;
+
+        if (currentAttemptNumber > GEO_CONSTANTS.MAX_OFFER_ATTEMPTS) {
+          console.log(`[Fallback] Pedido ${order.id} atingiu ${currentAttemptNumber - 1} tentativas`);
+          await prisma.order.update({
+            where: { id: order.id },
+            data: { status: OrderStatus.NO_COURIER_AVAILABLE, updatedAt: now },
+          });
+          await notifyAdminsOrderFailed(order.id, currentAttemptNumber - 1, {
             originAddress: order.originAddress,
             destinationAddress: order.destinationAddress,
             price: order.price,
           });
-
           failedCount++;
+          continue;
         }
-        continue;
-      }
 
-      const selectedDP = availableNow[0];
-      const expiresAt = new Date(now.getTime() + GEO_CONSTANTS.OFFER_TIMEOUT_SECONDS * 1000);
+        if (!order.originLatitude || !order.originLongitude) continue;
 
-      // Criar oferta com número da tentativa
-      const newOffer = await prisma.orderOffer.create({
-        data: {
-          orderId: order.id,
-          deliveryPersonId: selectedDP.id,
-          distanceToPickup: selectedDP.distance,
-          attemptNumber: currentAttemptNumber,
-          offeredAt: now,
-          expiresAt,
-        },
-      });
+        const previousOfferDeliveryPersonIds = await prisma.orderOffer.findMany({
+          where: {
+            orderId: order.id,
+            status: { in: [OfferStatus.REJECTED, OfferStatus.EXPIRED] },
+          },
+          select: { deliveryPersonId: true },
+        });
+        const excludedIds = new Set(previousOfferDeliveryPersonIds.map(o => o.deliveryPersonId));
 
-      // Registrar evento
-      await prisma.eventLog.create({
-        data: {
-          userId: selectedDP.id,
-          orderId: order.id,
-          eventType: EventType.ORDER_OFFER,
-          details: JSON.stringify({
-            offerId: newOffer.id,
-            distance: selectedDP.distance.toFixed(2),
-            expiresAt: expiresAt.toISOString(),
-            attemptNumber: currentAttemptNumber,
-            maxAttempts: GEO_CONSTANTS.MAX_OFFER_ATTEMPTS,
-            autoDistributed: true,
-          }),
-        },
-      });
+        const nearbyDeliveryPersons = availableDeliveryPersons
+          .filter(dp => !excludedIds.has(dp.id))
+          .map((dp) => ({
+            ...dp,
+            distance: haversineDistance(
+              dp.currentLatitude!,
+              dp.currentLongitude!,
+              order.originLatitude!,
+              order.originLongitude!
+            ),
+          }))
+          .filter((dp) => dp.distance <= GEO_CONSTANTS.MAX_PICKUP_DISTANCE_KM)
+          .sort((a, b) => {
+            if (a.priorityScore !== b.priorityScore) {
+              return a.priorityScore - b.priorityScore;
+            }
+            return a.distance - b.distance;
+          });
 
-      // Enviar push notification
-      if (selectedDP.fcmToken) {
-        try {
-          await sendNewOrderNotification(
-            [selectedDP.fcmToken],
-            {
-              orderId: order.id,
+        const availableNow = [];
+        for (const dp of nearbyDeliveryPersons) {
+          const hasActiveOffer = await prisma.orderOffer.findFirst({
+            where: {
+              deliveryPersonId: dp.id,
+              status: OfferStatus.PENDING,
+              expiresAt: { gt: now },
+            },
+          });
+          if (!hasActiveOffer) {
+            availableNow.push(dp);
+          }
+        }
+
+        if (availableNow.length === 0) {
+          if (currentAttemptNumber >= GEO_CONSTANTS.MAX_OFFER_ATTEMPTS) {
+            await prisma.order.update({
+              where: { id: order.id },
+              data: { status: OrderStatus.NO_COURIER_AVAILABLE, updatedAt: now },
+            });
+            await notifyAdminsOrderFailed(order.id, currentAttemptNumber, {
               originAddress: order.originAddress,
               destinationAddress: order.destinationAddress,
               price: order.price,
-              distance: order.distance || 0,
-            }
-          );
-          console.log(`[Auto-Distribute] Push enviado para ${selectedDP.name} (tentativa ${currentAttemptNumber}/${GEO_CONSTANTS.MAX_OFFER_ATTEMPTS})`);
-        } catch (pushError) {
-          console.error(`[Auto-Distribute] Erro ao enviar push:`, pushError);
+            });
+            failedCount++;
+          }
+          continue;
         }
-      }
 
-      distributedCount++;
-      console.log(`[Auto-Distribute] Pedido ${order.id} oferecido para ${selectedDP.name} (${selectedDP.distance.toFixed(2)}km) - Tentativa ${currentAttemptNumber}/${GEO_CONSTANTS.MAX_OFFER_ATTEMPTS}`);
+        const selectedDP = availableNow[0];
+        const expiresAt = new Date(now.getTime() + GEO_CONSTANTS.OFFER_TIMEOUT_SECONDS * 1000);
+
+        const newOffer = await prisma.orderOffer.create({
+          data: {
+            orderId: order.id,
+            deliveryPersonId: selectedDP.id,
+            distanceToPickup: selectedDP.distance,
+            attemptNumber: currentAttemptNumber,
+            offeredAt: now,
+            expiresAt,
+          },
+        });
+
+        await prisma.eventLog.create({
+          data: {
+            userId: selectedDP.id,
+            orderId: order.id,
+            eventType: EventType.ORDER_OFFER,
+            details: JSON.stringify({
+              offerId: newOffer.id,
+              mode: 'ONE_BY_ONE',
+              distance: selectedDP.distance.toFixed(2),
+              expiresAt: expiresAt.toISOString(),
+              attemptNumber: currentAttemptNumber,
+              maxAttempts: GEO_CONSTANTS.MAX_OFFER_ATTEMPTS,
+              autoDistributed: true,
+            }),
+          },
+        });
+
+        if (selectedDP.fcmToken) {
+          try {
+            await sendNewOrderNotification(
+              [selectedDP.fcmToken],
+              {
+                orderId: order.id,
+                originAddress: order.originAddress,
+                destinationAddress: order.destinationAddress,
+                price: order.price,
+                distance: order.distance || 0,
+              }
+            );
+            console.log(`[Auto-Distribute-1x1] Push enviado para ${selectedDP.name} (tentativa ${currentAttemptNumber}/${GEO_CONSTANTS.MAX_OFFER_ATTEMPTS})`);
+          } catch (pushError) {
+            console.error(`[Auto-Distribute-1x1] Erro ao enviar push:`, pushError);
+          }
+        }
+
+        distributedCount++;
+        console.log(`[Auto-Distribute-1x1] Pedido ${order.id} oferecido para ${selectedDP.name} (${selectedDP.distance.toFixed(2)}km)`);
+      }
     }
 
     return NextResponse.json({
       success: true,
+      mode: distributionMode,
       expiredCount: pendingExpiredOffers.length,
       distributedCount,
       failedCount,

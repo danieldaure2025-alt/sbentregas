@@ -16,7 +16,7 @@ export async function GET() {
     }
 
     const configs = await prisma.systemConfig.findMany();
-    
+
     const settings: Record<string, string> = {};
     configs.forEach(config => {
       settings[config.key] = config.value;
@@ -50,57 +50,71 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { baseFee, pricePerKm, platformFeePercentage, extraStopFee } = body;
+    const { baseFee, pricePerKm, platformFeePercentage, extraStopFee, distributionMode } = body;
 
-    // Validar valores
-    if (baseFee === undefined || pricePerKm === undefined || platformFeePercentage === undefined) {
-      return NextResponse.json(
-        { error: 'Todos os campos são obrigatórios' },
-        { status: 400 }
-      );
-    }
+    const operations = [];
 
-    if (baseFee < 0 || pricePerKm < 0 || platformFeePercentage < 0 || platformFeePercentage > 100 || (extraStopFee !== undefined && extraStopFee < 0)) {
-      return NextResponse.json(
-        { error: 'Valores inválidos' },
-        { status: 400 }
-      );
-    }
-
-    // Atualizar ou criar configurações
-    const operations = [
-      prisma.systemConfig.upsert({
-        where: { key: 'BASE_FEE' },
-        update: { value: baseFee.toString() },
-        create: { key: 'BASE_FEE', value: baseFee.toString() },
-      }),
-      prisma.systemConfig.upsert({
-        where: { key: 'PRICE_PER_KM' },
-        update: { value: pricePerKm.toString() },
-        create: { key: 'PRICE_PER_KM', value: pricePerKm.toString() },
-      }),
-      prisma.systemConfig.upsert({
-        where: { key: 'PLATFORM_FEE_PERCENTAGE' },
-        update: { value: (platformFeePercentage / 100).toString() },
-        create: { key: 'PLATFORM_FEE_PERCENTAGE', value: (platformFeePercentage / 100).toString() },
-      }),
-    ];
-
-    if (extraStopFee !== undefined) {
+    // Distribuição mode
+    if (distributionMode && ['ALL', 'ONE_BY_ONE', 'MANUAL'].includes(distributionMode)) {
       operations.push(
         prisma.systemConfig.upsert({
-          where: { key: 'EXTRA_STOP_FEE' },
-          update: { value: extraStopFee.toString() },
-          create: { key: 'EXTRA_STOP_FEE', value: extraStopFee.toString() },
+          where: { key: 'DISTRIBUTION_MODE' },
+          update: { value: distributionMode },
+          create: { key: 'DISTRIBUTION_MODE', value: distributionMode },
         })
+      );
+    }
+
+    // Pricing fields (optional — only validate if provided)
+    if (baseFee !== undefined && pricePerKm !== undefined && platformFeePercentage !== undefined) {
+      if (baseFee < 0 || pricePerKm < 0 || platformFeePercentage < 0 || platformFeePercentage > 100 || (extraStopFee !== undefined && extraStopFee < 0)) {
+        return NextResponse.json(
+          { error: 'Valores inválidos' },
+          { status: 400 }
+        );
+      }
+
+      operations.push(
+        prisma.systemConfig.upsert({
+          where: { key: 'BASE_FEE' },
+          update: { value: baseFee.toString() },
+          create: { key: 'BASE_FEE', value: baseFee.toString() },
+        }),
+        prisma.systemConfig.upsert({
+          where: { key: 'PRICE_PER_KM' },
+          update: { value: pricePerKm.toString() },
+          create: { key: 'PRICE_PER_KM', value: pricePerKm.toString() },
+        }),
+        prisma.systemConfig.upsert({
+          where: { key: 'PLATFORM_FEE_PERCENTAGE' },
+          update: { value: (platformFeePercentage / 100).toString() },
+          create: { key: 'PLATFORM_FEE_PERCENTAGE', value: (platformFeePercentage / 100).toString() },
+        })
+      );
+
+      if (extraStopFee !== undefined) {
+        operations.push(
+          prisma.systemConfig.upsert({
+            where: { key: 'EXTRA_STOP_FEE' },
+            update: { value: extraStopFee.toString() },
+            create: { key: 'EXTRA_STOP_FEE', value: extraStopFee.toString() },
+          })
+        );
+      }
+    }
+
+    if (operations.length === 0) {
+      return NextResponse.json(
+        { error: 'Nenhuma configuração para atualizar' },
+        { status: 400 }
       );
     }
 
     await prisma.$transaction(operations);
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Configurações atualizadas com sucesso' 
+    return NextResponse.json({
+      success: true,
+      message: 'Configurações atualizadas com sucesso'
     });
   } catch (error) {
     console.error('Error updating settings:', error);
