@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getAuthUser } from '@/lib/mobile-auth';
 import { prisma } from '@/lib/db';
 import { DeliveryPersonStatus, EventType } from '@prisma/client';
 
 // GET - Obter status atual do entregador
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const authUser = await getAuthUser(request);
+    if (!authUser) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: authUser.id },
       select: {
         id: true,
         name: true,
@@ -117,13 +116,13 @@ export async function GET() {
 // PUT - Alterar status do entregador
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const authUser = await getAuthUser(request);
+    if (!authUser) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: authUser.id },
       select: {
         id: true,
         role: true,
@@ -153,15 +152,15 @@ export async function PUT(request: NextRequest) {
     };
 
     if (!validTransitions[user.deliveryStatus]?.includes(newStatus)) {
-      return NextResponse.json({ 
-        error: `Transição inválida: ${user.deliveryStatus} → ${newStatus}` 
+      return NextResponse.json({
+        error: `Transição inválida: ${user.deliveryStatus} → ${newStatus}`
       }, { status: 400 });
     }
 
     // Se estiver indo ONLINE com pedido ativo, não permitir
     if (newStatus === 'ONLINE' && user.activeOrderId) {
-      return NextResponse.json({ 
-        error: 'Finalize o pedido atual antes de ficar ONLINE' 
+      return NextResponse.json({
+        error: 'Finalize o pedido atual antes de ficar ONLINE'
       }, { status: 400 });
     }
 
@@ -223,8 +222,8 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       newStatus,
     });
   } catch (error) {

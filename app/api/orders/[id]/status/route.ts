@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getAuthUser } from '@/lib/mobile-auth';
 import { prisma } from '@/lib/db';
 import { UserRole, OrderStatus } from '@prisma/client';
 import { createAuditLog } from '@/lib/audit-logger';
@@ -13,9 +12,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthUser(req);
 
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
@@ -40,16 +39,16 @@ export async function PATCH(
     }
 
     // Check permissions
-    const isAdmin = session.user.role === UserRole.ADMIN;
+    const isAdmin = user.role === UserRole.ADMIN;
     const isAssignedDeliveryPerson =
-      session.user.role === UserRole.DELIVERY_PERSON &&
-      session.user.id === order.deliveryPersonId;
+      user.role === UserRole.DELIVERY_PERSON &&
+      user.id === order.deliveryPersonId;
     const isOrderClient =
-      session.user.role === UserRole.CLIENT &&
-      session.user.id === order.clientId;
+      user.role === UserRole.CLIENT &&
+      user.id === order.clientId;
     const isOrderEstablishment =
-      session.user.role === UserRole.ESTABLISHMENT &&
-      session.user.id === order.establishmentId;
+      user.role === UserRole.ESTABLISHMENT &&
+      user.id === order.establishmentId;
 
     // Clients/Establishments can only cancel their orders
     if (isOrderClient || isOrderEstablishment) {
@@ -151,7 +150,7 @@ export async function PATCH(
 
     // Log the action
     await createAuditLog({
-      userId: session.user.id,
+      userId: user.id,
       orderId: order.id,
       action: 'ORDER_STATUS_UPDATED',
       details: `Order status changed from ${currentStatus} to ${status}`,
@@ -171,3 +170,6 @@ export async function PATCH(
     );
   }
 }
+
+// Also export as PUT for mobile app compatibility
+export { PATCH as PUT };

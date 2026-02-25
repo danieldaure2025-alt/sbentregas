@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getAuthUser } from '@/lib/mobile-auth';
 import { prisma } from '@/lib/db';
 import { UserRole, OrderStatus, UserStatus } from '@prisma/client';
 import { createAuditLog } from '@/lib/audit-logger';
@@ -13,20 +12,22 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthUser(req);
 
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
-    if (session.user.role !== UserRole.DELIVERY_PERSON) {
+    if (user.role !== UserRole.DELIVERY_PERSON) {
       return NextResponse.json(
         { error: 'Apenas entregadores podem aceitar pedidos' },
         { status: 403 }
       );
     }
 
-    if (session.user.status !== UserStatus.ACTIVE) {
+    // Check user status from DB
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { status: true } });
+    if (dbUser?.status !== UserStatus.ACTIVE) {
       return NextResponse.json(
         { error: 'Sua conta precisa estar ativa para aceitar pedidos' },
         { status: 403 }
@@ -62,7 +63,7 @@ export async function POST(
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
-        deliveryPersonId: session.user.id,
+        deliveryPersonId: user.id,
         status: OrderStatus.ACCEPTED,
         acceptedAt: new Date(),
       },
@@ -86,10 +87,10 @@ export async function POST(
 
     // Log the action
     await createAuditLog({
-      userId: session.user.id,
+      userId: user.id,
       orderId: order.id,
       action: 'ORDER_ACCEPTED',
-      details: `Order accepted by delivery person ${session.user.id}`,
+      details: `Order accepted by delivery person ${user.id}`,
       ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || undefined,
       userAgent: req.headers.get('user-agent') || undefined,
     });

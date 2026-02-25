@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getAuthUser } from '@/lib/mobile-auth';
 import { prisma } from '@/lib/db';
 import { detectFakeGps, GEO_CONSTANTS } from '@/lib/geo-utils';
 import { DeliveryPersonStatus, EventType } from '@prisma/client';
@@ -8,13 +7,13 @@ import { DeliveryPersonStatus, EventType } from '@prisma/client';
 // POST - Atualizar localização do entregador (a cada 3 segundos)
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const authUser = await getAuthUser(request);
+    if (!authUser) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: authUser.id },
       select: {
         id: true,
         role: true,
@@ -69,10 +68,10 @@ export async function POST(request: NextRequest) {
       });
 
       // Não atualizar posição se GPS falso
-      return NextResponse.json({ 
-        success: false, 
+      return NextResponse.json({
+        success: false,
         warning: 'GPS possivelmente falsificado',
-        reason: fakeGpsCheck.reason 
+        reason: fakeGpsCheck.reason
       }, { status: 200 });
     }
 
@@ -104,7 +103,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       trackingInterval: GEO_CONSTANTS.TRACKING_INTERVAL_MS,
     });

@@ -9,8 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { CheckoutWrapper } from '@/components/checkout/checkout-wrapper';
-import { CameraCapture } from '@/components/camera/camera-capture';
-import { MapPin, Navigation, FileText, DollarSign, Loader2, CreditCard, ArrowRight, CheckCircle, ArrowLeft, Banknote, QrCode, Clock, Plus, Trash2, Calendar, Camera, ScanText } from 'lucide-react';
+import { MapPin, Navigation, FileText, DollarSign, Loader2, CreditCard, ArrowRight, CheckCircle, ArrowLeft, Banknote, QrCode, Clock, Plus, Trash2, Calendar } from 'lucide-react';
 import { PAYMENT_METHOD_LABELS } from '@/lib/constants';
 
 type Step = 'details' | 'payment' | 'success';
@@ -32,43 +31,8 @@ export default function NewOrderPage() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [endOfDayBillingEnabled, setEndOfDayBillingEnabled] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-
-  // Handle extracted info from camera/OCR
-  const handleExtractedInfo = (info: {
-    originAddress?: string;
-    destinationAddress?: string;
-    phone?: string;
-    recipientName?: string;
-    notes?: string;
-  }) => {
-    // Update origin address if found
-    if (info.originAddress) {
-      setOriginAddresses([{ id: '1', address: info.originAddress }]);
-    }
-
-    // Update destination address if found
-    if (info.destinationAddress) {
-      setDestinationAddresses([{ id: '1', address: info.destinationAddress }]);
-    }
-
-    // Build notes from extracted info
-    const newNotes: string[] = [];
-    if (info.recipientName) newNotes.push(`Destinatário: ${info.recipientName}`);
-    if (info.phone) newNotes.push(`Telefone: ${info.phone}`);
-    if (info.notes) newNotes.push(info.notes);
-
-    if (newNotes.length > 0) {
-      setNotes(prev => prev ? `${prev}\n${newNotes.join('\n')}` : newNotes.join('\n'));
-    }
-
-    // Clear estimate since addresses may have changed
-    setEstimate(null);
-    // Hide camera after extraction
-    setShowCamera(false);
-  };
 
   // Load user settings: end of day billing + fixed pickup address
   useEffect(() => {
@@ -423,26 +387,6 @@ export default function NewOrderPage() {
       </div>
 
       <div className="space-y-6">
-        {/* Camera Capture Section */}
-        {showCamera ? (
-          <CameraCapture
-            onExtract={handleExtractedInfo}
-            onClose={() => setShowCamera(false)}
-          />
-        ) : (
-          <Button
-            type="button"
-            onClick={() => setShowCamera(true)}
-            className="w-full h-16 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
-          >
-            <Camera className="w-6 h-6 mr-3" />
-            <div className="text-left">
-              <div className="text-sm font-bold">Extrair da Foto</div>
-              <div className="text-xs opacity-80">Tire foto para preencher automaticamente</div>
-            </div>
-            <ScanText className="w-5 h-5 ml-auto" />
-          </Button>
-        )}
 
         <Card>
           <CardHeader>

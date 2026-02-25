@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getAuthUser } from '@/lib/mobile-auth';
 import { prisma } from '@/lib/db';
 import { UserRole, OrderStatus } from '@prisma/client';
 
@@ -9,13 +8,13 @@ export const dynamic = 'force-dynamic';
 // GET available orders for delivery persons
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthUser(req);
 
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
-    if (session.user.role !== UserRole.DELIVERY_PERSON && session.user.role !== UserRole.ADMIN) {
+    if (user.role !== UserRole.DELIVERY_PERSON && user.role !== UserRole.ADMIN) {
       return NextResponse.json(
         { error: 'Acesso negado' },
         { status: 403 }
