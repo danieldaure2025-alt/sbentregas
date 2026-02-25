@@ -14,6 +14,7 @@ import {
     History,
     LayoutDashboard,
     LogOut,
+    Map,
     Menu,
     MessageCircle,
     Package,
@@ -63,6 +64,7 @@ export function Sidebar() {
                 { href: '/dashboard/finances/admin', label: 'Finanças', icon: DollarSign },
                 { href: '/dashboard/invoices', label: 'Faturados', icon: History },
                 { href: '/dashboard/daily-closing', label: 'Fechamento', icon: Calendar },
+                { href: '/dashboard/order-map', label: 'Mapa de Pedidos', icon: Map },
                 { href: '/dashboard/users', label: 'Usuários', icon: Users },
                 { href: '/dashboard/settings', label: 'Configurações', icon: Settings },
             ];
@@ -71,6 +73,7 @@ export function Sidebar() {
                 ...baseLinks,
                 { href: '/dashboard/new-order', label: 'Novo Pedido', icon: PlusCircle },
                 { href: '/dashboard/orders', label: 'Meus Pedidos', icon: History },
+                { href: '/dashboard/fee-map', label: 'Mapa de Taxas', icon: Map },
                 { href: '/dashboard/finances', label: 'Finanças', icon: DollarSign },
                 { href: '/dashboard/my-settings', label: 'Configurações', icon: Settings },
             ];

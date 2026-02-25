@@ -7,9 +7,9 @@ import { Loading } from '@/components/shared/loading';
 import { EmptyState } from '@/components/shared/empty-state';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Users, Filter, CheckCircle, XCircle, Loader2, Star, Clock, 
-  FileText, QrCode, Building2, MapPin, Phone, Mail, Truck, ChevronDown, ChevronUp
+import {
+  Users, Filter, CheckCircle, XCircle, Loader2, Star, Clock,
+  FileText, QrCode, Building2, MapPin, Phone, Mail, Truck, ChevronDown, ChevronUp, Trash2, AlertTriangle
 } from 'lucide-react';
 import { USER_ROLE_LABELS } from '@/lib/constants';
 
@@ -61,6 +61,8 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Formatar CPF/CNPJ para exibição
@@ -146,8 +148,8 @@ export default function UsersPage() {
 
       toast({
         title: 'Sucesso!',
-        description: !currentValue 
-          ? 'Cobrança no final do dia ativada' 
+        description: !currentValue
+          ? 'Cobrança no final do dia ativada'
           : 'Cobrança no final do dia desativada',
       });
 
@@ -160,6 +162,34 @@ export default function UsersPage() {
       });
     } finally {
       setUpdatingUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    setDeletingUserId(userId);
+    try {
+      const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao remover usuário');
+      }
+
+      toast({
+        title: 'Usuário removido',
+        description: 'O usuário foi excluído com sucesso.',
+      });
+
+      setDeleteConfirmId(null);
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error?.message || 'Erro ao remover usuário',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -501,6 +531,52 @@ export default function UsersPage() {
                               </>
                             )}
                           </Button>
+                        )}
+
+                        {/* Botão Remover */}
+                        {user.role !== 'ADMIN' && (
+                          <>
+                            {deleteConfirmId === user.id ? (
+                              <div className="mt-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg space-y-2">
+                                <div className="flex items-center gap-1 text-red-400 text-xs">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  <span>Confirmar exclusão?</span>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleDeleteUser(user.id)}
+                                    disabled={deletingUserId !== null}
+                                    className="flex-1 h-7 text-xs"
+                                  >
+                                    {deletingUserId === user.id ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : 'Sim, remover'}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setDeleteConfirmId(null)}
+                                    className="flex-1 h-7 text-xs"
+                                  >
+                                    Cancelar
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setDeleteConfirmId(user.id)}
+                                disabled={updatingUserId !== null || deletingUserId !== null}
+                                className="w-full mt-2 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Remover
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

@@ -31,6 +31,8 @@ export default function NewOrderPage() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [endOfDayBillingEnabled, setEndOfDayBillingEnabled] = useState(false);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState('');
   const router = useRouter();
   const { toast } = useToast();
 
@@ -166,6 +168,7 @@ export default function NewOrderPage() {
           destinationAddress: getFullDestinationAddress(),
           notes,
           paymentMethod,
+          scheduledAt: isScheduled && scheduledAt ? scheduledAt : undefined,
         }),
       });
 
@@ -525,6 +528,44 @@ export default function NewOrderPage() {
                 </>
               )}
             </Button>
+
+            {/* Agendamento */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-4 rounded-lg border border-gray-600 bg-gray-800/50">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isScheduled ? 'bg-amber-500 text-white' : 'bg-gray-700 text-gray-400'}`}>
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className={`font-semibold text-sm ${isScheduled ? 'text-amber-400' : 'text-white'}`}>Agendar Pedido</p>
+                    <p className="text-xs text-gray-400">Programe para data e hora futura</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setIsScheduled(!isScheduled); if (isScheduled) setScheduledAt(''); }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isScheduled ? 'bg-amber-500' : 'bg-gray-600'
+                    }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isScheduled ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                </button>
+              </div>
+              {isScheduled && (
+                <div className="pl-4">
+                  <Label htmlFor="scheduledAt" className="text-sm text-amber-400 mb-1 block">Data e Hora</Label>
+                  <Input
+                    id="scheduledAt"
+                    type="datetime-local"
+                    value={scheduledAt}
+                    onChange={(e) => setScheduledAt(e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                    className="bg-gray-800 border-amber-500/30 text-white"
+                    disabled={isCreatingOrder}
+                  />
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 

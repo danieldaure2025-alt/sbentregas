@@ -47,6 +47,8 @@ interface Order {
   price: number;
   distance: number;
   paymentMethod?: string;
+  isScheduled?: boolean;
+  scheduledAt?: string;
   createdAt: string;
   acceptedAt?: string;
   completedAt?: string;
@@ -269,6 +271,11 @@ export default function AdminDeliveriesPage() {
                         <span className="text-sm font-mono text-foreground/60">#{order.id.slice(-6)}</span>
                         <StatusBadge status={order.status} type="order" />
                         <span className="text-sm text-foreground/60">{getPaymentMethodLabel(order.paymentMethod)}</span>
+                        {order.isScheduled && (
+                          <span className="px-2 py-0.5 text-xs rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            📅 Agendado {order.scheduledAt ? new Date(order.scheduledAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                          </span>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -325,6 +325,10 @@ model Order {
   // Stripe Payment Intent
   paymentIntentId     String?     @unique
   
+  // Scheduling
+  isScheduled         Boolean     @default(false)
+  scheduledAt         DateTime?
+  
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
   acceptedAt          DateTime?

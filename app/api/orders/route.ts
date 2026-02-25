@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { originAddress, destinationAddress, notes, paymentMethod } = body;
+    const { originAddress, destinationAddress, notes, paymentMethod, scheduledAt } = body;
 
     if (!originAddress || !destinationAddress) {
       return NextResponse.json(
@@ -126,17 +126,22 @@ export async function POST(req: NextRequest) {
     const { price, platformFee, deliveryFee } = await calculateOrderPrice(distance);
 
     // Determinar status inicial baseado no método de pagamento
-    // CASH e END_OF_DAY: PENDING (disponível para entregadores)
+    // CASH, END_OF_DAY, ON_DELIVERY, INVOICED: PENDING (disponível para entregadores)
     // PIX e CREDIT_CARD: AWAITING_PAYMENT (aguardando confirmação de pagamento)
-    const initialStatus = (paymentMethod === 'CASH' || paymentMethod === 'END_OF_DAY')
+    const directPaymentMethods = ['CASH', 'END_OF_DAY', 'ON_DELIVERY', 'INVOICED'];
+    const initialStatus = directPaymentMethods.includes(paymentMethod)
       ? OrderStatus.PENDING
       : OrderStatus.AWAITING_PAYMENT;
 
     // Validar método de pagamento
-    const validPaymentMethods = ['CREDIT_CARD', 'PIX', 'DEBIT_CARD', 'CASH', 'END_OF_DAY'];
+    const validPaymentMethods = ['CREDIT_CARD', 'PIX', 'DEBIT_CARD', 'CASH', 'END_OF_DAY', 'ON_DELIVERY', 'INVOICED'];
     const selectedPaymentMethod = validPaymentMethods.includes(paymentMethod)
       ? paymentMethod as PaymentMethod
       : PaymentMethod.CREDIT_CARD;
+
+    // Scheduling
+    const isScheduled = !!scheduledAt;
+    const scheduledDate = scheduledAt ? new Date(scheduledAt) : null;
 
     // Create order with coordinates (Coordinates format: [longitude, latitude])
     const order = await prisma.order.create({
@@ -153,6 +158,8 @@ export async function POST(req: NextRequest) {
         price,
         paymentMethod: selectedPaymentMethod,
         status: initialStatus,
+        isScheduled,
+        scheduledAt: scheduledDate,
       },
       include: {
         client: {
@@ -166,8 +173,8 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Para CASH e END_OF_DAY, criar Transaction como PENDING
-    if (paymentMethod === 'CASH' || paymentMethod === 'END_OF_DAY') {
+    // Para CASH, END_OF_DAY, ON_DELIVERY e INVOICED, criar Transaction como PENDING
+    if (directPaymentMethods.includes(paymentMethod)) {
       await prisma.transaction.create({
         data: {
           orderId: order.id,
