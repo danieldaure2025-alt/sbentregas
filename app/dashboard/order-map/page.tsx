@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loading } from '@/components/shared/loading';
+import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Map, RefreshCw, Package, Truck, MapPin, Clock, Filter } from 'lucide-react';
+import { RefreshCw, Package, Truck, MapPin, Filter } from 'lucide-react';
 
 interface MapOrder {
     id: string;
@@ -57,11 +58,12 @@ export default function OrderMapPage() {
     const [orders, setOrders] = useState<MapOrder[]>([]);
     const [deliveryPersons, setDeliveryPersons] = useState<DeliveryPerson[]>([]);
     const [loading, setLoading] = useState(true);
+    const [mapReady, setMapReady] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [autoRefresh, setAutoRefresh] = useState(true);
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    const mapRef = useRef<any>(null);
-    const markersRef = useRef<any[]>([]);
+    const mapRef = useRef<mapboxgl.Map | null>(null);
+    const markersRef = useRef<mapboxgl.Marker[]>([]);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const { toast } = useToast();
 
@@ -81,31 +83,34 @@ export default function OrderMapPage() {
 
     // Init map
     useEffect(() => {
-        if (!mapContainerRef.current) return;
+        if (!mapContainerRef.current || mapRef.current) return;
 
-        const initMap = async () => {
-            const mapboxgl = (await import('mapbox-gl')).default;
+        const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+        if (!token) {
+            console.error('NEXT_PUBLIC_MAPBOX_TOKEN not set');
+            return;
+        }
 
-            mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+        mapboxgl.accessToken = token;
 
-            const map = new mapboxgl.Map({
-                container: mapContainerRef.current!,
-                style: 'mapbox://styles/mapbox/dark-v11',
-                center: [-36.45, -7.05], // São Bento
-                zoom: 13,
-            });
+        const map = new mapboxgl.Map({
+            container: mapContainerRef.current,
+            style: 'mapbox://styles/mapbox/dark-v11',
+            center: [-36.45, -7.05],
+            zoom: 13,
+        });
 
-            map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-            mapRef.current = map;
-        };
+        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-        initMap();
+        map.on('load', () => {
+            setMapReady(true);
+        });
+
+        mapRef.current = map;
 
         return () => {
-            if (mapRef.current) {
-                mapRef.current.remove();
-                mapRef.current = null;
-            }
+            map.remove();
+            mapRef.current = null;
         };
     }, []);
 
@@ -124,108 +129,99 @@ export default function OrderMapPage() {
         };
     }, [autoRefresh, fetchMapData]);
 
-    // Update markers
+    // Update markers when data or filter changes
     useEffect(() => {
-        if (!mapRef.current) return;
+        if (!mapRef.current || !mapReady) return;
 
-        const updateMarkers = async () => {
-            const mapboxgl = (await import('mapbox-gl')).default;
+        // Clear existing markers
+        markersRef.current.forEach(m => m.remove());
+        markersRef.current = [];
 
-            // Clear existing markers
-            markersRef.current.forEach(m => m.remove());
-            markersRef.current = [];
+        const filteredOrders = statusFilter === 'ALL' ? orders : orders.filter(o => o.status === statusFilter);
 
-            const filteredOrders = statusFilter === 'ALL' ? orders : orders.filter(o => o.status === statusFilter);
+        // Add order markers
+        filteredOrders.forEach(order => {
+            if (order.originLatitude && order.originLongitude) {
+                const color = STATUS_COLORS[order.status] || '#6b7280';
+                const el = document.createElement('div');
+                el.style.cssText = `width:28px;height:28px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;`;
+                el.textContent = '📦';
 
-            // Add order markers
-            filteredOrders.forEach(order => {
-                // Origin marker
-                if (order.originLatitude && order.originLongitude) {
-                    const color = STATUS_COLORS[order.status] || '#6b7280';
-                    const el = document.createElement('div');
-                    el.className = 'order-marker';
-                    el.innerHTML = `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:12px;color:white;font-weight:bold;cursor:pointer;">📦</div>`;
+                const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+                    <div style="font-family:system-ui;font-size:13px;padding:4px;">
+                      <strong>#${order.id.slice(-6)}</strong><br/>
+                      <span style="color:${color};font-weight:600;">${STATUS_LABELS[order.status] || order.status}</span><br/>
+                      <strong>R$ ${order.price.toFixed(2)}</strong> · ${order.distance?.toFixed(1)} km<br/>
+                      <small>🟢 ${order.originAddress.split(',').slice(0, 2).join(',')}</small><br/>
+                      <small>🔴 ${order.destinationAddress.split(',').slice(0, 2).join(',')}</small><br/>
+                      <small>Cliente: ${order.client.name}</small>
+                      ${order.deliveryPerson ? `<br/><small>Entregador: ${order.deliveryPerson.name}</small>` : ''}
+                      ${order.isScheduled && order.scheduledAt ? `<br/><small>📅 Agendado: ${new Date(order.scheduledAt).toLocaleString('pt-BR')}</small>` : ''}
+                    </div>
+                `);
 
-                    const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-            <div style="font-family:system-ui;font-size:13px;padding:4px;">
-              <strong>#${order.id.slice(-6)}</strong><br/>
-              <span style="color:${color};font-weight:600;">${STATUS_LABELS[order.status] || order.status}</span><br/>
-              <strong>R$ ${order.price.toFixed(2)}</strong> · ${order.distance?.toFixed(1)} km<br/>
-              <small>🟢 ${order.originAddress.split(',').slice(0, 2).join(',')}</small><br/>
-              <small>🔴 ${order.destinationAddress.split(',').slice(0, 2).join(',')}</small><br/>
-              <small>Cliente: ${order.client.name}</small>
-              ${order.deliveryPerson ? `<br/><small>Entregador: ${order.deliveryPerson.name}</small>` : ''}
-              ${order.isScheduled && order.scheduledAt ? `<br/><small>📅 Agendado: ${new Date(order.scheduledAt).toLocaleString('pt-BR')}</small>` : ''}
-            </div>
-          `);
+                const marker = new mapboxgl.Marker(el)
+                    .setLngLat([order.originLongitude, order.originLatitude])
+                    .setPopup(popup)
+                    .addTo(mapRef.current!);
+                markersRef.current.push(marker);
+            }
 
-                    const marker = new mapboxgl.Marker(el)
-                        .setLngLat([order.originLongitude, order.originLatitude])
-                        .setPopup(popup)
-                        .addTo(mapRef.current!);
-                    markersRef.current.push(marker);
-                }
+            // Destination marker
+            if (order.destinationLatitude && order.destinationLongitude) {
+                const el = document.createElement('div');
+                el.style.cssText = 'width:16px;height:16px;border-radius:50%;background:#ef4444;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);';
 
-                // Destination marker (smaller)
-                if (order.destinationLatitude && order.destinationLongitude) {
-                    const el = document.createElement('div');
-                    el.innerHTML = `<div style="width:18px;height:18px;border-radius:50%;background:#ef4444;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`;
+                const marker = new mapboxgl.Marker(el)
+                    .setLngLat([order.destinationLongitude, order.destinationLatitude])
+                    .addTo(mapRef.current!);
+                markersRef.current.push(marker);
+            }
+        });
 
-                    const marker = new mapboxgl.Marker(el)
-                        .setLngLat([order.destinationLongitude, order.destinationLatitude])
-                        .addTo(mapRef.current!);
-                    markersRef.current.push(marker);
-                }
-            });
+        // Add delivery person markers
+        deliveryPersons.forEach(dp => {
+            if (dp.currentLatitude && dp.currentLongitude) {
+                const el = document.createElement('div');
+                el.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;">
+                        <div style="background:rgba(0,0,0,0.85);color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:3px;white-space:nowrap;border:2px solid #3b82f6;">
+                            ${dp.name}
+                        </div>
+                        <div style="width:30px;height:30px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:14px;">
+                            🛵
+                        </div>
+                    </div>
+                `;
 
-            // Delivery person markers
-            deliveryPersons.forEach(dp => {
-                if (dp.currentLatitude && dp.currentLongitude) {
-                    const el = document.createElement('div');
-                    const statusIcon = dp.deliveryStatus === 'ONLINE' ? '🟢' : '🔵';
-                    el.innerHTML = `<div style="width:32px;height:32px;border-radius:50%;background:#1d4ed8;border:3px solid #60a5fa;box-shadow:0 2px 8px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;">${dp.vehicleType === 'CAR' ? '🚗' : '🏍️'}</div>`;
+                const marker = new mapboxgl.Marker(el)
+                    .setLngLat([dp.currentLongitude, dp.currentLatitude])
+                    .addTo(mapRef.current!);
+                markersRef.current.push(marker);
+            }
+        });
+    }, [orders, deliveryPersons, statusFilter, mapReady]);
 
-                    const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-            <div style="font-family:system-ui;font-size:13px;padding:4px;">
-              <strong>${dp.name}</strong><br/>
-              <span>${statusIcon} ${dp.deliveryStatus || 'Online'}</span><br/>
-              <small>${dp.vehicleType === 'CAR' ? 'Carro' : 'Moto'}</small>
-            </div>
-          `);
-
-                    const marker = new mapboxgl.Marker(el)
-                        .setLngLat([dp.currentLongitude, dp.currentLatitude])
-                        .setPopup(popup)
-                        .addTo(mapRef.current!);
-                    markersRef.current.push(marker);
-                }
-            });
-        };
-
-        updateMarkers();
-    }, [orders, deliveryPersons, statusFilter]);
-
-    const filteredOrders = statusFilter === 'ALL' ? orders : orders.filter(o => o.status === statusFilter);
-
+    // Stats
     const stats = {
         total: orders.length,
-        pending: orders.filter(o => o.status === 'PENDING').length,
+        pending: orders.filter(o => o.status === 'PENDING' || o.status === 'AWAITING_PAYMENT').length,
         inProgress: orders.filter(o => ['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT'].includes(o.status)).length,
         delivered: orders.filter(o => o.status === 'DELIVERED').length,
         driversOnline: deliveryPersons.length,
     };
 
-    if (loading) return <Loading />;
+    if (loading && !mapReady) return <Loading />;
 
     return (
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-3">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <Map className="w-6 h-6 text-orange-500" />
+                    <MapPin className="w-6 h-6 text-orange-500" />
                     <h1 className="text-2xl font-bold text-white">Mapa de Pedidos</h1>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex gap-2">
                     <Button
                         variant={autoRefresh ? 'default' : 'outline'}
                         size="sm"
@@ -292,7 +288,10 @@ export default function OrderMapPage() {
 
             {/* Map */}
             <Card className="border-gray-700 overflow-hidden">
-                <div ref={mapContainerRef} className="w-full" style={{ height: '60vh', minHeight: '400px' }} />
+                <div
+                    ref={mapContainerRef}
+                    style={{ width: '100%', height: '60vh', minHeight: '400px' }}
+                />
             </Card>
 
             {/* Legend */}

@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loading } from '@/components/shared/loading';
+import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Map, DollarSign, MapPin, Info } from 'lucide-react';
+import { DollarSign, MapPin, Info } from 'lucide-react';
 
 interface PricingZone {
     minKm: number;
@@ -47,9 +48,7 @@ export default function FeeMapPage() {
     useEffect(() => {
         if (!mapContainerRef.current || zones.length === 0) return;
 
-        const initMap = async () => {
-            const mapboxgl = (await import('mapbox-gl')).default;
-
+        const initMap = () => {
             mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
             // Center on São Bento (approximate)
@@ -146,7 +145,7 @@ export default function FeeMapPage() {
         <div className="p-4 space-y-4">
             {/* Header */}
             <div className="flex items-center gap-2">
-                <Map className="w-6 h-6 text-orange-500" />
+                <MapPin className="w-6 h-6 text-orange-500" />
                 <h1 className="text-2xl font-bold text-white">Mapa de Taxas</h1>
             </div>
 
